@@ -1,0 +1,11 @@
+.vs
+__pycache__/
+*.user
+venv-*/
+.venv*
+logs/
+*.env
+*.log.[0-9]
+*.log.[0-9][0-9]
+data/
+.idea/

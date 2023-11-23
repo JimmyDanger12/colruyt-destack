@@ -24,4 +24,5 @@ class Handler():
         self.robot_controller = RobotController()
         self.ui = UI()
 
+        self.ui.start_ui()
         self.robot_controller.connect(robot_ip)

@@ -2,6 +2,8 @@ from robot_mechanics.robot_controller import RobotController
 from globalconfig import GlobalConfig
 from user_interface.user_interface import UI
 from backend_logging import setup_logging, get_logger
+import logging
+import time
 
 FIELD_ROBOT = "ROBOT"
 FIELD_IP = "ip"
@@ -25,4 +27,7 @@ class Handler():
         self.ui = UI()
 
         self.ui.start_ui()
+        print("Monkey")
+        time.sleep(10)
+        get_logger(__name__).log(logging.WARNING,f"New log message")
         #self.robot_controller.connect(robot_ip)

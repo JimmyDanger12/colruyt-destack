@@ -70,7 +70,7 @@ def attach_log_handler(logger: Logger):
             logger.addHandler(console_log_handler)
 
 def get_logger(logger_name: str = 'default'):
-    loggername = 'rocsys.{}'.format(logger_name)
+    loggername = 'colruyt.{}'.format(logger_name)
 
     if loggers.get(loggername):
         return loggers.get(loggername)

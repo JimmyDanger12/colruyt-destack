@@ -1,4 +1,6 @@
 from flask import Flask, render_template
+from backend_logging import get_logger
+import logging
 
 class UI():
     """
@@ -15,18 +17,31 @@ class UI():
         def index():
             return render_template('index.html')
 
-        @self.app.route('/button1')
-        def button1():
+        @self.app.route('/start_destack')
+        def button_start_destack():
             # Code to execute when button 1 is clicked
             # Replace this with your own command execution logic
-            print("Button 1 clicked!")
-            return 'Button 1 Clicked!'
+            get_logger(__name__).log(logging.INFO,
+                                     f"Start destacking button clicked")
+            return
 
-        @self.app.route('/button2')
-        def button2():
+        @self.app.route('/emergency_stop')
+        def button_emergency_stop():
             # Code to execute when button 2 is clicked
             # Replace this with your own command execution logic
-            print("Button 2 clicked!")
-            return 'Button 2 Clicked!'
-
-        self.app.run(debug=True)
+            get_logger(__name__).log(logging.INFO,
+                                     f"Emergency stop button clicked")
+            return
+        
+        @self.app.route('/destack_done')
+        def button_destack_done():
+            # Code to execute when button 2 is clicked
+            # Replace this with your own command execution logic
+            get_logger(__name__).log(logging.INFO,
+                                     f"Destacking done button clicked")
+            return
+        try:
+            self.app.run(debug=True)
+        except Exception as e:
+            get_logger(__name__).log(logging.ERROR,
+                                     f"Error: {e}")

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>THUAS-CrateDestacking</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <style>
+        header {
+            display: flex;
+            justify-content: center;
+            align-items: top;
+            padding: 10px;
+        }
+        .center_logo {
+            text-align: center;
+            margin-right: 20px;
+        }
+        .side_logos {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .logo {
+            width: 140px; /* Adjust the width and height as needed */
+            height: auto;
+            margin-bottom: 10px;
+        }
+        .main_logo {
+            width: 400px;
+            height: 150px;
+        }
+        .status_icon {
+            margin-right: 5px;
+            font-size: 20px;
+        }
+        .status_icon.initializing {
+            color: gray;
+        }
+        .status_icon.connected {
+            color: green;
+        }
+        .status_icon.running {
+            color: darkblue;
+        }
+        .status_icon.need_assistance {
+            color: orange;
+        }
+        .status_icon.done {
+            color: cyan;
+        }
+        .status_icon.stopped {
+            color: darkred;
+        }
+        body {
+            height: 100%;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            filter: brightness(90%);
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin: 20px 0;
+        }
+        #log {
+            width: 200%;
+            height: 200px;
+            padding: 10px;
+            font-size: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        let logMessages = '';
+
+        function emitEvent(eventName) {
+            socket.emit(eventName);
+        }
+
+        socket.on('new_log', function(data) {
+            logMessages += data.data + '\n'; // Add a newline character after each message
+            document.getElementById('log').textContent = logMessages;
+        });
+
+        socket.on('initial_logs', function(data) {
+            logMessages = data.data + '\n';
+            document.getElementById('log').textContent = logMessages;
+        });
+
+        socket.on('update_status', function(data) {
+            const newStatus = data;
+
+            // Update the status text
+            document.getElementById("status").innerText = 'Status: ' + newStatus;
+
+            // Change the status icon based on the received status
+            const statusIcon = document.getElementById("status_icon");
+
+            // Remove existing classes
+            statusIcon.classList.remove("initializing", "connected", "running", "need_assistance", "done", "stopped");
+
+            // Add the appropriate class based on the new status
+            if (newStatus === "Initializing") {
+                statusIcon.classList.add("initializing");
+            } else if (newStatus === "Connected") {
+                statusIcon.classList.add("connected")
+            } else if (newStatus === "Running") {
+                statusIcon.classList.add("running");
+            } else if (newStatus === "Need Assistance") {
+                statusIcon.classList.add("need_assistance");
+            } else if (newStatus === "Done") {
+                statusIcon.classList.add("done");
+            } else if (newStatus === "Stopped") {
+                statusIcon.classList.add("stopped");
+            }
+        });
+
+
+    </script>
+</head>
+<body>
+    <header>
+        <div class="center_logo">
+            <img class="main_logo" src="{{ url_for('static', filename='main-logo.png') }}" alt="Main Log">
+        </div>
+        <div class="side_logos">
+            <img class="logo" src="{{ url_for('static', filename='THUAS-logo.jpg') }}" alt="THUAS Logo">
+            <img class="logo" src="{{ url_for('static', filename='colruyt-logo.svg') }}" alt="Colruyt Logo">
+        </div>
+    </header>
+    <div style="display: flex; justify-content: center; align-items: top;">
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <h3 style="text-align: center;">
+                <span id="status_icon" class="status_icon initializing">●</span>
+                <span id="status">Status: Initializing</span>
+            </h3>
+            <button onclick="emitEvent('start_destack')">Start Destack</button>
+            <button onclick="emitEvent('destack_done')">Destack Done</button>
+            <button onclick="emitEvent('emergency_stop')" style="background-color: darkred;">Emergency Stop</button>
+        </div>
+        
+        <div style="margin-left: 20px;">
+            <h3 style="text-align: center;">Log Messages</h3>
+            <textarea id="log" rows="10" readonly></textarea>
+        </div>
+    </div>
+    
+    
+</body>
+</html>

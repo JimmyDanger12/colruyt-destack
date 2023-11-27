@@ -19,7 +19,7 @@ class Handler():
         self.robot_controller = None
         self.server = None
         self.socketio = None
-        self.status = Status.Disconneced
+        self.status = Status.Disconnected
         self.last_log_position = 0
 
     def start(self, config:GlobalConfig):
@@ -30,7 +30,16 @@ class Handler():
         
         get_logger(__name__).log(100,
                             f"Robot Handler starting...")
-        self.start_server()
+        try:
+            self.start_server()
+        except Exception as e:
+            get_logger(__name__).log(logging.ERROR, f"Error: {e}")
+            raise
+        finally:
+            get_logger(__name__).log(
+                100,
+                f"Flask server shutting down"
+            )
     
     def start_server(self):
         self.server = Flask(__name__)
@@ -66,17 +75,8 @@ class Handler():
         def button_emergency_stop():
             self.handle_command("emergency_stop")
 
-        try:
-            self.socketio.start_background_task(self.send_new_logs)
-            self.socketio.run(self.server, debug=False)
-        except Exception as e:
-            get_logger(__name__).log(logging.ERROR, f"Error: {e}")
-            raise
-        finally:
-            get_logger(__name__).log(
-                100,
-                f"Flask server shutting down"
-            )
+        self.socketio.start_background_task(self.send_new_logs)
+        self.socketio.run(self.server, debug=False)
 
     def get_new_log_content(self):
         with open('logs/backend.log', 'r') as log_file:
@@ -98,7 +98,7 @@ class Handler():
 
     def handle_command(self, command):
         get_logger(__name__).log(logging.INFO,
-                                 f"Executing command {command}")
+                                 f"Executing command '{command}'")
         if command == "connect_to_robot":
             self.robot_controller.connect()
         elif command == "destack_done":

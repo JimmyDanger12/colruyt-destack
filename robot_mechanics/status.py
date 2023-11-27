@@ -1,5 +1,5 @@
 class Status():
-    Disconneced = "Disconnected"
+    Disconnected = "Disconnected"
     Connected = "Connected"
     Running = "Running"
     Done = "Done"

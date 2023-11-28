@@ -61,6 +61,7 @@ class Handler():
                 logging.INFO,
                 f"Client connected, starting log emission"
             )
+            self.handle_command("connect_to_robot")
         
         @self.socketio.on('disconnect')
         def handle_disconnect():
@@ -80,7 +81,6 @@ class Handler():
             self.handle_command("emergency_stop")
 
         self.socketio.start_background_task(self.send_new_logs)
-        self.handle_command("connect_to_robot")
         self.socketio.run(self.server, debug=False)
 
     def get_new_log_content(self):
@@ -113,13 +113,17 @@ class Handler():
                 get_logger(__name__).log(logging.INFO,
                         f"Executing command '{command}' started")
                 self.change_status(Status.Running)
-
-                if command == CMD_START_DESTACK:
-                    self.robot_controller.start_destack()
-                elif command == CMD_DESTACK_DONE:
-                    self.robot_controller.destack_done()
-                elif command == CMD_EMERGENCY_STOP:
-                    self.robot_controller.stop(1)   
+                try:
+                    if command == CMD_START_DESTACK:
+                        self.robot_controller.start_destack()
+                    elif command == CMD_DESTACK_DONE:
+                        self.robot_controller.destack_done()
+                    elif command == CMD_EMERGENCY_STOP:
+                        self.robot_controller.stop(1)   
+                except Exception as e:
+                    get_logger(__name__).log(logging.WARNING,
+                                             f"Error when executing robot command {command}: {e}")
+                    self.robot_controller.rob.close()
                              
                 get_logger(__name__).log(logging.INFO,
                             f"Executing command '{command}' finished")   

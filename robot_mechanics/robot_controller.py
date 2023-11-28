@@ -3,7 +3,6 @@ from vision.vision_client import VisionClient
 from robot_mechanics.status import Status
 from backend_logging import get_logger
 import logging
-import time
 
 class RobotController():
     """
@@ -13,7 +12,7 @@ class RobotController():
     def __init__(self, ip, handler):
         self.handler = handler
         self.ip = ip
-        self.vision_client = VisionClient() #maybe move to connect phase
+        self.vision_client = VisionClient() #maybe move to connect method
         self.rob = None
     
     def connect(self):
@@ -21,7 +20,7 @@ class RobotController():
             self.rob = urx.Robot(self.ip)
             status = Status.Connected
             get_logger(__name__).log(logging.INFO,
-                            "New client connected")
+                            "Robot connected")
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                                      f"Error when connecting to robot: {e}")
@@ -40,18 +39,15 @@ class RobotController():
         - move to conveyor
         (- retake image?)
         """
-        try:
-            l = 0.02
-            v = 0.05
-            a = 0.3
-            self.rob.set_tcp((0,0,0,0,0,0))
-            pose = self.rob.getl()
-            pose[2] += l
-            self.rob.movel(pose,acc=a,vel=v)
-        except Exception as e:
-            get_logger(__name__).log(logging.ERROR,
-                                     f"Error when executing robot command {e}")  
-            self.rob.close()   
+        l = -0.05
+        v = 0.02
+        a = 0.1
+        self.rob.set_tcp((0,0,0,0,0,0))
+        pose = self.rob.getl()
+        pose[2] += l
+        self.rob.movel(pose,acc=a,vel=v)
+        get_logger(__name__).log(logging.INFO,
+                                 f"Sent command 'movel({pose},acc={a},vel={v})' to robot")
 
     def stop(self,priority):
         """

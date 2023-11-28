@@ -9,6 +9,11 @@ import time
 
 FIELD_ROBOT = "ROBOT"
 FIELD_IP = "ip"
+CMD_START_DESTACK = "start_destack"
+CMD_DESTACK_DONE = "destack_done"
+CMD_EMERGENCY_STOP = "emergency_stop"
+CMD_CONNECT_TO_ROBOT = "connect_to_robot"
+COMMANDS = [CMD_CONNECT_TO_ROBOT,CMD_START_DESTACK,CMD_DESTACK_DONE,CMD_EMERGENCY_STOP]
 
 class Handler():
     """
@@ -56,7 +61,6 @@ class Handler():
                 logging.INFO,
                 f"Client connected, starting log emission"
             )
-            self.handle_command("connect_to_robot")
         
         @self.socketio.on('disconnect')
         def handle_disconnect():
@@ -76,6 +80,7 @@ class Handler():
             self.handle_command("emergency_stop")
 
         self.socketio.start_background_task(self.send_new_logs)
+        self.handle_command("connect_to_robot")
         self.socketio.run(self.server, debug=False)
 
     def get_new_log_content(self):
@@ -97,13 +102,28 @@ class Handler():
         self.socketio.emit("update_status",self.status)
 
     def handle_command(self, command):
-        get_logger(__name__).log(logging.INFO,
-                                 f"Executing command '{command}'")
-        if command == "connect_to_robot":
+        if command not in COMMANDS:
+            get_logger(__name__).log(logging.WARNING,
+                        f"Unknown command {command}")
+            return
+        if command == CMD_CONNECT_TO_ROBOT:
             self.robot_controller.connect()
-        elif command == "destack_done":
-            self.robot_controller.destack_done()
-        elif command == "emergency_stop":
-            self.robot_controller.stop()
-        elif command == "start_destack":
-            self.robot_controller.start_destack()
+        else:
+            if self.robot_controller.rob:
+                get_logger(__name__).log(logging.INFO,
+                        f"Executing command '{command}' started")
+                self.change_status(Status.Running)
+
+                if command == CMD_START_DESTACK:
+                    self.robot_controller.start_destack()
+                elif command == CMD_DESTACK_DONE:
+                    self.robot_controller.destack_done()
+                elif command == CMD_EMERGENCY_STOP:
+                    self.robot_controller.stop(1)   
+                             
+                get_logger(__name__).log(logging.INFO,
+                            f"Executing command '{command}' finished")   
+                self.change_status(Status.Done)                 
+            else:
+                get_logger(__name__).log(logging.WARNING,
+                                         f"No robot connected")

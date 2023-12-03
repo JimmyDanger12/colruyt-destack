@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>THUAS-CrateDestacking</title>
+    <title>THUAS-CrateUnloading</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <style>
         header {
@@ -56,6 +56,7 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
+            background-image: url('static/background_1.png');
         }
 
         h1 {
@@ -157,8 +158,8 @@
                 <span id="status_icon" class="status_icon initializing">●</span>
                 <span id="status">Status: Initializing</span>
             </h3>
-            <button onclick="emitEvent('start_destack')">Start Destack</button>
-            <button onclick="emitEvent('destack_done')">Destack Done</button>
+            <button onclick="emitEvent('start_destack')">Start Unloading</button>
+            <button onclick="emitEvent('destack_done')">Unloading Done</button>
             <button onclick="emitEvent('emergency_stop')" style="background-color: darkred;">Emergency Stop</button>
         </div>
         

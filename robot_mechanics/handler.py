@@ -9,6 +9,7 @@ import time
 
 FIELD_ROBOT = "ROBOT"
 FIELD_IP = "ip"
+FIELD_TCP = "tcp"
 CMD_START_DESTACK = "start_destack"
 CMD_DESTACK_DONE = "destack_done"
 CMD_EMERGENCY_STOP = "emergency_stop"
@@ -31,7 +32,8 @@ class Handler():
         setup_logging(config)
         
         robot_ip = config[FIELD_ROBOT,FIELD_IP]
-        self.robot_controller = RobotController(robot_ip, self)
+        robot_tcp = config[FIELD_ROBOT,FIELD_TCP]
+        self.robot_controller = RobotController(robot_ip, robot_tcp, self)
         
         get_logger(__name__).log(100,
                             f"Robot Handler starting...")

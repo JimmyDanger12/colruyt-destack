@@ -9,15 +9,20 @@ class RobotController():
     This class is responsible for connecting the main script to the robot and
     executing robot commands
     """
-    def __init__(self, ip, handler):
+    def __init__(self, ip, tcp, handler):
         self.handler = handler
         self.ip = ip
         self.vision_client = VisionClient() #maybe move to connect method
         self.rob = None
+        self.tcp = tcp
+        self.robot_position = None #use? or always getl in movement functions
+        #TODO: set robot home position
     
     def connect(self):
         try:
             self.rob = urx.Robot(self.ip)
+            self.rob.set_tcp(self.tcp)
+
             status = Status.Connected
             get_logger(__name__).log(logging.INFO,
                             "Robot connected")
@@ -37,12 +42,11 @@ class RobotController():
         - lift up
         - move backwards
         - move to conveyor
-        (- retake image?)
+         -> start over until complete
         """
         l = -0.05
         v = 0.02
         a = 0.1
-        self.rob.set_tcp((0,0,0,0,0,0))
         pose = self.rob.getl()
         pose[2] += l
         self.rob.movel(pose,acc=a,vel=v)

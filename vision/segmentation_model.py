@@ -1,7 +1,5 @@
 from ultralytics import YOLO
-import cv2
 from PIL import Image
-import numpy as np
 
 IMG_SIZE = "img_size"
 BATCH_SIZE = "batch_size"
@@ -13,12 +11,14 @@ LEARNING_RATE = "learning_rate"
 PATIENCE = "patience"
 PATH = "path"
 
+BEST_MODEL_PATH = "vision/runs/segment/train8/weights/best.pt"
+
 class SegmentationModel():
     def __init__(self):
         self.model = None
 
     def load_model(self):
-        self.model = YOLO("vision/runs/segment/train5/weights/best.pt", task="segment")
+        self.model = YOLO(BEST_MODEL_PATH, task="segment")
     
     def train(self, params):
         path = params[PATH]
@@ -33,13 +33,16 @@ class SegmentationModel():
             self.reset_model()
         
         self.model.train(data=path+"/data.yaml",
+                         single_cls=True,
                          imgsz=image_size,
                          epochs=epochs,
                          batch=batch_size,
                          optimizer=optimizer,
                          lr0=lr,
                          patience=patience,
-                         retina_masks=True)
+                         retina_masks=True,
+                         close_mosaic=10,
+                         project="vision/runs/segment")
     
     def test(self):
         metrics = self.model.val(split="test")
@@ -49,16 +52,16 @@ class SegmentationModel():
         results = self.model.predict(source=path,
                             save=True,
                             conf=0.4,
+                            iou=0.45,
                             save_crop=save_crops,
-                            project="vision/crops",
-                            name="monkey")
+                            project="vision/crops/monkey",
+                            exist_ok=True)
         
         if show:
             for r in results:
                 im_array = r.plot()
                 im = Image.fromarray(im_array[..., ::-1])
                 im.show()
-        
         return results
     
     def reset_model(self):
@@ -66,22 +69,27 @@ class SegmentationModel():
 
 
 params = {
-    PATH: "vision/data/no-bars_no-classes",
+    PATH: "vision/data/only_lab_total",
     IMG_SIZE: 640,
     OPTIMIZER: "AdamW",
-    LEARNING_RATE: 0.0015,
+    LEARNING_RATE: 0.0012,
     EPOCHS: 80,
-    BATCH_SIZE: 8,
+    BATCH_SIZE: 16,
     PATIENCE: 10
 }
 
 if __name__ == "__main__":
     b = SegmentationModel()
 
-    b.load_model()
+    #b.load_model()
+    print("model loaded")
 
-    #results = b.train(params)
+    results = b.train(params)
+    print("model trained")
 
     #metrics = b.test()
+    print("model evaluated")
 
-    results = b.predict("vision/test_frame.jpg", True, True)
+    test_image = Image.open("vision/data/test_image.jpg")
+    results = b.predict(test_image, True, False)
+    print("model tested")

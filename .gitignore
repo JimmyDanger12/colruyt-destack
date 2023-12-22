@@ -12,3 +12,5 @@ data/
 runs/
 *yolov8*
 crops/
+robot_movements/robot_path_V1.py
+robot_movements/robot_path_V2.py

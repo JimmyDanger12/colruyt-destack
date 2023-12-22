@@ -25,15 +25,6 @@ class RobotController():
         self.tcp = tcp
         self.robot_position = None #use? or always getl in movement functions
         self.pick_loc = None
-
-        self.tcp_hooks = [0, 0.05583, 0.0915, 0, 0, 0]
-        self.tcp_bar = [0, 0.02, 0.1095, 0, 0, 0]
-        self.tcp_plate = [0, -0.125, 0.0895, 0, 0, 0]
-
-        self.pre_pick = [0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
-        self.place_pos = [0.72478, 0.39171, 0.0236, -0.006, -1.59, 0.02] 
-        self.pre_place = [0.72478, 0.39171, 0.2236, -0.006, -1.59, 0.02]
-        self.via_pose = [-0.612, -0.305, 340, 0.55, -1.5, 0.56]
         #TODO: set robot home position
     
     def connect(self):
@@ -52,21 +43,28 @@ class RobotController():
     
     def start_destack(self):
 
+        tcp_bar = [0, 0.02, 0.1095, 0, 0, 0]
+        tcp_plate = [0, -0.125, 0.0895, 0, 0, 0]
+
+        pre_pick = []
+        place_pos = []
+        pre_place = []
+        via_pose = []
 
         while True:
-            self.move_start_pos(self.tcp_bar) 
+            self.move_start_pos(tcp_bar, pre_place)
             pick_coords, pick_loc, pick_ori, picked_ori, crate_size = self.retrieve_pick_pos()
             if pick_coords == []:
                 break #add alert
-            self.move_pre_pick_pos() 
-            self.move_pre_picked_pos(pick_loc, pick_ori) 
-            self.move_picked_pos(pick_loc, pick_ori, picked_ori) 
-            self.move_out_carrier(pick_loc, picked_ori) 
+            self.move_pre_pick_pos(via_pose, pre_pick)
+            self.move_pre_picked_pos(pre_pick, pick_loc, pick_ori)
+            self.move_picked_pos(pick_loc, pick_ori, picked_ori)
+            self.move_out_carrier(pick_loc, pre_pick, picked_ori)
             self.depl_safety_syst()
-            self.move_pre_place_pos(picked_ori) 
+            self.move_pre_place_pos(pre_pick, picked_ori, via_pose, pre_place)
             self.retr_safety_syst()
-            self.move_on_conv_pos(crate_size, picked_ori) 
-            self.move_place_crate() 
+            self.move_on_conv_pos(place_pos, crate_size, picked_ori)
+            self.move_place_crate(place_pos, pre_place)
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
             if dropoff_value == True:
                 self.turn_conv_on()
@@ -75,9 +73,9 @@ class RobotController():
         return
     
 
-    def move_start_pos(self, tcp_bar):
+    def move_start_pos(self, tcp_bar, pre_place):
         self.rob.set_tcp(tcp_bar)
-        self.rob.movej(self.pre_place, a=1, v=0.5,)
+        self.rob.movej(pre_place, a=1, v=0.5,)
 
     def retrieve_pick_pos(self):
         pick_coords = []
@@ -87,28 +85,27 @@ class RobotController():
         crate_size = ()
         return pick_coords, pick_loc, pick_ori, picked_ori, crate_size
 
-    def move_pre_pick_pos(self):
-        self.rob.movec(self.via_pose, self.pre_pick, a=1, v=0.5, r=0.2, mode=1)
+    def move_pre_pick_pos(self, via_pose, pre_pick):
+        self.rob.movec(via_pose, pre_pick, a=1, v=0.5, r=0.2, mode=1)
     
-    def move_pre_picked_pos(self, pick_loc, pick_ori):
-        self.rob.movej([self.pre_pick[0:2],pick_ori], a=1, v= 0.25)
+    def move_pre_picked_pos(self, pre_pick, pick_loc, pick_ori):
+        self.rob.movej([pre_pick[0:2],pick_ori], a=1, v= 0.25)
         self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03, pick_ori[0]+10, pick_ori[1], pick_ori[2]], a=1, v= 0.25)
 
     def move_picked_pos(self, pick_loc, pick_ori, picked_ori):
         self.rob.movel([pick_loc,  pick_ori[0]+10, pick_ori[1], pick_ori[2]], a=1, v= 0.1)
         self.rob.movel([pick_loc,  pick_ori], a=1, v= 0.1)
-        self.rob.set_tcp(self.tcp_plate)
-        self.rob.movel([0, 0, 0, -20, 0, 0], a=0.5, v= 0.1, relative=True)
+        #switch to plate tcp, but that fucks up the pick_loc so then we need to add an offset to the pick_loc before tilting
+        self.rob.movel([pick_loc, picked_ori], a=0.5, v= 0.1)
 
-    def move_out_carrier(self, pick_loc, picked_ori):
-        self.rob.set_tcp(self.tcp_bar)
+    def move_out_carrier(self, pick_loc, pre_pick, picked_ori):
         self.rob.movel([0, 0, 0.03, 0, 0, 0], a=0.5, v= 0.1, wait=False, relative=True)
-        self.rob.movel([pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03 , picked_ori], a=1, v= 0.25, wait=False)
+        self.rob.movel([pick_loc[0], pre_pick[1], pick_loc[2]+0.03 , picked_ori], a=1, v= 0.25, wait=False)
         while True:
             pressure_value = self.rob.get_analog_in(ANA_IN_PRESSR) + self.rob.get_analog_in(ANA_IN_PRESSL)
             if pressure_value < 800:
                 self.stop()
-            if self.rob.get_pose() == [pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03 , picked_ori]:
+            if self.rob.get_pose() == [pick_loc[0], pre_pick[1], pick_loc[2]+0.03 , picked_ori]:
                 break
 
 
@@ -119,9 +116,9 @@ class RobotController():
         time.sleep(3)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, False)
 
-    def move_pre_place_pos(self, picked_ori):
-        self.rob.movel([self.pre_pick[0:2],picked_ori], a=1, v= 1,)
-        self.rob.movec([self.via_pose[0:2],picked_ori], [self.pre_place[0:2],picked_ori], a=1, v=0.5, r=0, mode=1)
+    def move_pre_place_pos(self, pre_pick, picked_ori, via_pose, pre_place):
+        self.rob.movel([pre_pick[0:2],picked_ori], a=1, v= 1,)
+        self.rob.movec([via_pose[0:2],picked_ori], [pre_place[0:2],picked_ori], a=1, v=0.5, r=0, mode=1)
 
     def retr_safety_syst(self):
         self.rob.set_analog_out(ANA_OUT_CONV, 0)
@@ -131,13 +128,13 @@ class RobotController():
         time.sleep(3)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, False)
 
-    def move_on_conv_pos(self, crate_size, picked_ori):
-        self.rob.movel([self.place_pos[0], self.place_pos[1], self.place_pos[2]+crate_size, picked_ori], a=1, v= 1)
+    def move_on_conv_pos(self, place_pos, crate_size, picked_ori):
+        self.rob.movel([place_pos[0], place_pos[1], place_pos[2]+crate_size, picked_ori], a=1, v= 1)
 
-    def move_place_crate(self):
-        self.rob.movel([self.place_pos], a=1, v= 1)
+    def move_place_crate(self, place_pos, pre_place):
+        self.rob.movel([place_pos], a=1, v= 1)
         time.sleep(5)
-        self.rob.movel(self.pre_place, a=1, v= 1)
+        self.rob.movel(pre_place, a=1, v= 1)
 
     def turn_conv_on(self):
         self.rob.set_analog_out(ANA_OUT_CONV, 1)

@@ -21,13 +21,12 @@ CALLBACKS = "callbacks"
 class ClassificationModel():
     def __init__(self):
         self.model = None
-        self.class_names = ['HookPickup', 'NoCrate', 'NoPickup', 'SuctionPickup']
+        self.class_names = ["NoCrate","NoPickupCrate","PickupCrate"]
 
     def load_model(self):
-        self.model = keras.models.load_model("vision/class_model.keras")
-        self.model.summary()
+        self.model = keras.models.load_model("vision/class_model_new.keras",safe_mode=False)
 
-    def train(self, params, show=False):
+    def train(self, params, show=False, save=True):
         
         img_height,img_width = params[IMG_SIZE]
         optimizer = params[OPTIMIZER]
@@ -37,7 +36,7 @@ class ClassificationModel():
         metrics = params[METRICS]
         callbacks = params[CALLBACKS]
 
-        class_dir = "./vision/data/classified-fronts/"
+        class_dir = "./vision/data/crops_detections"
 
         train_ds = keras.utils.image_dataset_from_directory(class_dir+"/train",
                                                             image_size=(img_height,img_width),
@@ -89,31 +88,31 @@ class ClassificationModel():
             plt.title('Training and Validation Loss')
             plt.show()
         
-        self.model.save("vision/class_model.keras")
+        if save:
+            self.model.save("vision/class_model_new.keras")
 
     def reset_model(self, img_height, img_width, num_classes):
         data_augmentation = keras.Sequential([
-            keras.layers.RandomFlip("horizontal",
-                              input_shape=(img_height,
-                                           img_width,
-                                           3)),
-            keras.layers.RandomRotation(0.1),
-            keras.layers.RandomZoom(0.1)])
+            layers.Lambda(lambda x: x[...,::-1],input_shape=(img_height,img_width,3)),
+            layers.RandomRotation(0.3,
+                                        fill_mode="reflect",
+                                        interpolation="bilinear"),
+            layers.RandomZoom(0.1)])
 
         model = keras.Sequential([
             data_augmentation,
-            keras.layers.Rescaling(1./255, input_shape=(img_height, img_width, 3)),
-            keras.layers.Conv2D(16, 3, padding="same", activation="relu"),
-            keras.layers.MaxPooling2D(),
-            keras.layers.Conv2D(32, 3, padding="same", activation="relu"),
-            keras.layers.MaxPooling2D(),
-            keras.layers.Conv2D(64, 3, padding="same", activation="relu"),
-            keras.layers.MaxPooling2D(),
-            keras.layers.Dropout(0.1),
-            keras.layers.Flatten(),
-            keras.layers.Dense(128, activation="relu"),
-            keras.layers.Dense(64, activation="relu"),
-            keras.layers.Dense(num_classes, activation="softmax")
+            layers.Rescaling(1./255, input_shape=(img_height, img_width, 3)),
+            layers.Conv2D(16, 3, padding="same", activation="relu"),
+            layers.MaxPooling2D(),
+            layers.Conv2D(32, 3, padding="same", activation="relu"),
+            layers.MaxPooling2D(),
+            layers.Conv2D(64, 3, padding="same", activation="relu"),
+            layers.MaxPooling2D(),
+            layers.Dropout(0.1),
+            layers.Flatten(),
+            layers.Dense(128, activation="relu"),
+            layers.Dense(64, activation="relu"),
+            layers.Dense(num_classes, activation="softmax")
         ])
         return model
     
@@ -124,20 +123,21 @@ class ClassificationModel():
             file = os.path.join(path,file)
             img = keras.utils.load_img(file)
             img_array = keras.utils.img_to_array(img)
-            img_array = tf.image.resize(img_array,(640,640))
+            img_array = tf.image.resize(img_array,(256,256))
             img_array = tf.expand_dims(img_array, 0)
 
             predictions = self.model.predict(img_array)
             predicted_class_idx = np.argmax(predictions[0])
             class_name = self.class_names[predicted_class_idx]
             conf = np.max(predictions[0])
+            print(file,class_name,conf)
             labels.append(class_name)
             conf_list.append(conf)
 
         return labels, conf_list
 
     def test(self):
-        data_dir = "vision/data/classified-fronts/test"
+        data_dir = "vision/data/crops_detections/test"
         all_predictions = []
         all_labels = []
 
@@ -169,9 +169,9 @@ class ClassificationModel():
 
 learning_rate = 0.001
 weight_decay = 0.004
-callback = keras.callbacks.EarlyStopping(monitor="val_loss", patience=3)
+callback = keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
 params = {
-    IMG_SIZE: (640,640),
+    IMG_SIZE: (256,256),
     BATCH_SIZE: 16,
     OPTIMIZER: keras.optimizers.AdamW(learning_rate,weight_decay),
     LOSS: keras.losses.SparseCategoricalCrossentropy(from_logits=False),
@@ -182,8 +182,10 @@ params = {
 
 if __name__ == "__main__":
     a = ClassificationModel()
-    a.load_model()
-    #a.train(params, show=True)
-    #a.test()
-    path="vision/crops/monkey/crops/Crate/"
-    print(a.predict(path=path))
+    #a.load_model()
+    print("train_start")
+    a.train(params, show=True, save=False)
+    a.test()
+    #path="vision/crops/monkey/predict/crops/Crate"
+    path="vision/data/detected_crops"
+    a.predict(path=path)

@@ -48,9 +48,9 @@ class SegmentationModel():
         metrics = self.model.val(split="test")
         return metrics
 
-    def predict(self, path, show=False, save_crops=False):
+    def predict(self, path, show=False, save=True, save_crops=False):
         results = self.model.predict(source=path,
-                            save=True,
+                            save=save,
                             conf=0.4,
                             iou=0.45,
                             save_crop=save_crops,
@@ -81,15 +81,15 @@ params = {
 if __name__ == "__main__":
     b = SegmentationModel()
 
-    #b.load_model()
+    b.load_model()
     print("model loaded")
 
-    results = b.train(params)
+    #results = b.train(params)
     print("model trained")
 
     #metrics = b.test()
     print("model evaluated")
 
-    test_image = Image.open("vision/data/test_image.jpg")
-    results = b.predict(test_image, True, False)
+    test_image = "vision/data/only_lab_total/test/images"
+    results = b.predict(test_image, False, False, True)
     print("model tested")

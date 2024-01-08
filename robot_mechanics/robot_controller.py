@@ -1,5 +1,5 @@
 import urx
-#from vision.vision_client import VisionClient
+from vision.vision_client import VisionClient
 from robot_mechanics.status import Status
 from backend_logging import get_logger
 import logging
@@ -20,7 +20,7 @@ class RobotController():
     def __init__(self, ip, tcp, handler):
         self.handler = handler
         self.ip = ip
-        #self.vision_client = VisionClient() #maybe move to connect method
+        self.vision_client = VisionClient() #maybe move to connect method
         self.rob = None
         self.tcp = tcp
         self.robot_position = None #use? or always getl in movement functions
@@ -44,33 +44,27 @@ class RobotController():
             status = Status.Connected
             get_logger(__name__).log(logging.INFO,
                             "Robot connected")
+            #self.vision_client.connect()
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                                      f"Error when connecting to robot: {e}")
             status = Status.Disconnected       
         self._change_status(status)   
     
-    def start_destack(self):
-
-
-        while True:
+    def start_carrier_unloading(self):
+        i = 0
+        while True: #Loop until all crates are unloaded
+            i += 1
             get_logger(__name__).log(logging.INFO,
-                f"Starting move start pos")
-            self.move_start_pos(self.tcp_bar) 
-            get_logger(__name__).log(logging.INFO,
-                f"Starting retreive pick pos")
-            pick_coords, pick_loc, pick_ori, picked_ori, crate_size = self.retrieve_pick_pos()
-            if pick_coords == []:
-                break #add alert
+                                     f"Started unloading of Crate (#{i})")
+            
+            self.move_start_pos() 
+            pick_pos, crate_size = self.retrieve_pick_pos()
+            if pick_pos == []:
+                break #TODO: add alert if no coordinates were returned
             self.move_pre_pick_pos() 
-            get_logger(__name__).log(logging.INFO,
-                f"pre pick pos")
-            self.move_pre_picked_pos(pick_loc, pick_ori) 
-            get_logger(__name__).log(logging.INFO,
-                f"pre pick pos")
-            self.move_picked_pos(pick_loc, pick_ori, picked_ori) 
-            get_logger(__name__).log(logging.INFO,
-                f"picked pos")
+            self.move_far_pickup_pos(pick_pos) 
+            self.move_close_pickup_pos(pick_pos) 
             break
             self.move_out_carrier(pick_loc, picked_ori) 
             self.depl_safety_syst()
@@ -86,35 +80,106 @@ class RobotController():
         return
     
 
-    def move_start_pos(self, tcp_bar):
-        self.rob.set_tcp(tcp_bar)
-        get_logger(__name__).log(logging.INFO,
-            f"set tcp")
+    def move_start_pos(self):
+        get_logger(__name__).log(logging.DEBUG,
+                f"Move start pos started")
+        
+        self.rob.set_tcp(self.tcp_bar)
+        get_logger(__name__).log(logging.DEBUG,
+            f"set tcp to {self.tcp_bar}")
         pose=self.rob.getl()
+
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Attempting to move to coordinates {self.pre_place}")
         self.rob.movel(self.pre_place, acc=1, vel=0.5)
-        get_logger(__name__).log(logging.INFO,
-            f"did first movel")
+
+        get_logger(__name__).log(logging.DEBUG,
+                f"Move start pos completed")
 
     def retrieve_pick_pos(self):
-        pick_coords = [-0.17534, -1.10184, -0.011093, -8.8043, 1.0891, -5.7366]
-        pick_loc = [pick_coords[1:2]]
-        pick_ori = [pick_coords[3:5]]
-        picked_ori = [pick_ori[0]-20, pick_ori[1], pick_ori[2]]
-        crate_size = (0.33)
-        return pick_coords, pick_loc, pick_ori, picked_ori, crate_size
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Retrieval of pick position started")
+        
+        pick_coords = [-0.17534, -1.10184, -0.011093, -8.8043, 1.0891, -5.7366] #TODO: get coords from vision
+        crate_size = 0.33
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Retreived coords, crate_size from vision {pick_coords}, {crate_size}")
+        
+        pick_coords[3] += -20 #TODO: why here?
+
+        get_logger(__name__).log(logging.DEBUG,
+                                 "Retrieval of pick coordinates completed")
+        return pick_coords, crate_size
 
     def move_pre_pick_pos(self):
-        self.rob.movec(self.via_pose, self.pre_pick, acc=1, vel=0.5, r=0.2, mode=1)
-    
-    def move_pre_picked_pos(self, pick_loc, pick_ori):
-        self.rob.movel([self.pre_pick[0:2],pick_ori], acc=1, vel= 0.25)
-        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03, pick_ori[0]+10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.25)
+        get_logger(__name__).log(logging.DEBUG,
+                                 "Move pre-pick pos started")
+        
+        get_logger(__name__).log(logging.DEBUG,
+                            f"Attempting to move to coordinates {self.pre_place}")
+        self.rob.movec(pose_via = self.via_pose, 
+                       pose_to = self.pre_pick, 
+                       acc=1, 
+                       vel=0.5, 
+                       r=0.2)
 
-    def move_picked_pos(self, pick_loc, pick_ori, picked_ori):
-        self.rob.movel([pick_loc,  pick_ori[0]+10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.1)
-        self.rob.movel([pick_loc,  pick_ori], acc=1, vel= 0.1)
+        get_logger(__name__).log(logging.DEBUG,
+                                 "Move pre-pick pos completed")
+    
+    def move_far_pickup_pos(self, pick_coords):
+        get_logger(__name__).log(logging.DEBUG,
+                            "Move far_pickup_pos started")
+
+        tilted_pos = self.pre_pick[0:3]+pick_coords[3:6] #Get EoAT tilt correct first
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Attempting to move to coordinates {tilted_pos}")
+        self.rob.movel(tilted_pos,
+                       acc=1, 
+                       vel= 0.25)
+        
+        pos_mods = [0,0,0.03,10,0,0]
+        far_pickup_pos = [c+x for c,x in zip(pick_coords,pos_mods)]
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Attempting to move to coords {far_pickup_pos}")
+        self.rob.movel(far_pickup_pos, 
+                       acc=1, 
+                       vel= 0.25)
+
+        get_logger(__name__).log(logging.DEBUG,
+                            "Move far_pickup_pos completed")
+
+    def move_close_pickup_pos(self, pick_coords):
+        get_logger(__name__).log(logging.DEBUG,
+                            "Move close_pickup_pos started")
+        
+        in_crate_mod = [0,0,0,10,0,0]
+        in_crate_pos = [c+x for c,x in zip(pick_coords,in_crate_mod)]
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Attempting to move to coords {in_crate_pos}")
+        self.rob.movel(in_crate_pos, #TODO: why not relative?
+                       acc=1, 
+                       vel= 0.1)
+
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Attempting to move to {pick_coords}")
+        self.rob.movel(pick_coords, 
+                       acc=1, 
+                       vel= 0.1)
+        
         self.rob.set_tcp(self.tcp_plate)
-        self.rob.movel([0, 0, 0, -20, 0, 0], acc=0.5, vel= 0.1, relative=True)
+        get_logger(__name__).log(logging.DEBUG,
+            f"set tcp to {self.tcp_plate}")
+        
+        tilt_movement = [0,0,0,-20,0,0]
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Attempting to move (rel) by {tilt_movement}")
+        self.rob.movel(tilt_movement, #Rotate around plate
+                       acc=0.5, 
+                       vel= 0.1, 
+                       relative=True)
+
+        get_logger(__name__).log(logging.DEBUG,
+                            "Move close_pickup_pos completed")
 
     def move_out_carrier(self, pick_loc, picked_ori):
         self.rob.set_tcp(self.tcp_bar)

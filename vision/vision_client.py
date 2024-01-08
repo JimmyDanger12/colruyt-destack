@@ -1,25 +1,339 @@
+import time
+in_time = time.time()
+import cv2
+from PIL import Image, ImageDraw, ImageFont
+import pyrealsense2 as rs
+import numpy as np
+from vision.classification_model import ClassificationModel
+from vision.segmentation_model import SegmentationModel
+import os
+import glob
+from keras import backend as K
 from backend_logging import get_logger
+import logging
+import pandas as pd
+import math
+import_time = time.time()
+print("Import time:",import_time-in_time)
+
+VISION_PATH = "vision/crops/monkey/predict"
+
+class NoPickUpCrateException(Exception):
+    pass
+
+class NoDetectedCratesException(Exception):
+    pass
 
 class VisionClient():
-    """
-    This class is responsible for connecting to the vision camera,
-    requesting images and performing image transformation and calculation
-    """
     def __init__(self):
-        pass
+        self.pipeline = None
+        self.crate_dims = None
+        self.path = VISION_PATH
+        self.sm = None
+        self.cm = None
+        self.k = None
+        self.d = None
+    
+    def connect(self):
+        self.sm = SegmentationModel()
+        self.sm.load_model()
+        get_logger(__name__).log(logging.DEBUG,
+                        f"Segmentation model loaded")
+        K.clear_session()
+        self.cm = ClassificationModel()
+        self.cm.load_model()
+        get_logger(__name__).log(logging.DEBUG,
+                            f"Classification model loaded")
+        self.crate_dims = pd.read_csv("vision/data/crate_sizes.csv")
+        
+    def init_camera_streams(self):
+        # Configure depth and color streams
+        self.pipeline = rs.pipeline()
+        config = rs.config()
 
-    def do_vision_thing(self):
+        config.enable_stream(rs.stream.depth)
+        config.enable_stream(rs.stream.color)
+
+        # Start streaming
+        self.pipeline.start(config)
+        sensor = self.pipeline.get_active_profile().get_device().query_sensors()[1]
+
+        # Set the exposure anytime during the operation
+        sensor.set_option(rs.option.exposure, 500.000)
+        #sensor.set_option(rs.option.laser_power, 180)
+        align_to = rs.stream.color
+        align = rs.align(align_to)
+        filters = [rs.spatial_filter(),rs.temporal_filter()]
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Camera Initialization complete")
+        return align, filters
+
+    def get_frames(self, pipeline, align, filters):
+        # Wait for a coherent pair of frames: depth and color
+        frames = pipeline.wait_for_frames()
+        aligned_frames = align.process(frames)
+        depth_frame = aligned_frames.get_depth_frame()
+        for filter in filters:
+            depth_frame = filter.process(depth_frame)
+        depth_frame = depth_frame.as_depth_frame()
+        color_frame = aligned_frames.get_color_frame()
+
+        self.color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
+        self.k = np.array(((self.color_intrin.fx, 0, self.color_intrin.ppx),
+                (0,self.color_intrin.fy, self.color_intrin.ppy),
+                (0,0,1)))
+        self.d = np.array(self.color_intrin.coeffs)
+        return color_frame, depth_frame
+
+    def get_valid_neighbors(self,coords,limits,size):
+        neighbours = []
+        for i in range(-size,size+1):
+            for j in range(-size,size+1):
+                xn, yn = coords[0]+i, coords[1]+j
+                if (xn,yn) != coords:
+                    if 0 <= xn < limits[0] and 0 <= yn < limits[1]:
+                        neighbours.append((xn,yn))
+        return neighbours
+
+    def get_2d_points(self,mask_raw, limits, c1):
+        polygon = mask_raw.xy[0]
+        epsilon = 0.1 * cv2.arcLength(polygon, True)
+        box = cv2.approxPolyDP(polygon, epsilon, True)
+        if box.shape != (4,1,2):
+            return
+        box = box.reshape(4,2)
+        #rect = cv2.minAreaRect(polygon)
+        #box = cv2.boxPoints(rect)
+        sorted_box = box[np.argsort(box[:, 0])]
+        top_points = [tuple(sorted_box[0]),tuple(sorted_box[1])]
+        c1.polygon(box,outline=(0,255,0),width=5)
+        c1.line(top_points,fill=(255,255,0),width=5)
+
+        top_x, top_y = np.mean(top_points, axis=0).astype(int)
+        center_x, center_y = np.mean(box,axis=0).astype(int)
+        
+        rel_2d_points = list(sorted_box.copy())
+        rel_2d_points.append([top_x,top_y])
+        rel_2d_points.append([center_x,center_y])
+
+        r = 5
+        for i, (x,y) in enumerate(rel_2d_points):
+            x = int(np.clip(x, 0, limits[0]-1))
+            y = int(np.clip(y, 0, limits[1]-1))
+            rel_2d_points[i] = [x,y]
+            c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,0,255))
+            
+        return rel_2d_points
+
+    def get_camera_3d_points(self,depth_frame, rel_2d_points, color_intrin, limits):
+        rel_3d_points = []
+        for x_2d,y_2d in rel_2d_points:
+            depth = depth_frame.get_distance(x_2d,y_2d)
+            if depth == 0:
+                neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),1)
+                distances = []
+                for nx, ny in neighbours:
+                    depth = depth_frame.get_distance(nx, ny)
+                    if depth != 0:
+                        distances.append(depth)
+                
+                if distances:
+                    depth = np.median(distances)
+                else:
+                    depth = 0
+
+            #right: x, down: y, forward: z
+            result = rs.rs2_deproject_pixel_to_point(color_intrin, [x_2d, y_2d], depth)
+            """
+            Camera:     Robot:
+            x: down     x: left
+            y: left     y: back
+            z: forward  z: up
+
+            Robot = Camera:
+            x -> y
+            y -> -z
+            z -> -x
+            """
+            x_cam,y_cam,z_cam = result
+            x_rob = y_cam
+            y_rob = -z_cam
+            z_rob = -x_cam
+
+            rel_3d_points.append([x_rob,y_rob,z_rob])
+        return rel_3d_points
+
+    def show_3d_points(self,points_3d, rot, trans, k, d, c1):
+        for point_3d in points_3d:
+            point_3d = np.array(point_3d,dtype=np.float64)
+            point_2d, jacobian = cv2.projectPoints(point_3d, rot, trans, k, d)
+            x,y = tuple(point_2d.flatten())
+            r=5
+            c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
+            #c1.text((x,y),f"{point_3d}")
+
+    def calculate_rotational_angles(self,plane_coordinates): #TODO: maybe modify
+        # Extracting the coordinates of the plane
+        p1, p2, p3, p4 = plane_coordinates
+
+        # Calculate vectors along two edges of the plane
+        v1 = np.array(p2) - np.array(p1)
+        v2 = np.array(p3) - np.array(p1)
+
+        # Calculate the cross product to get the normal vector of the plane
+        normal_vector = np.cross(v1, v2)
+        # Normalize the normal vector
+        normal_vector /= np.linalg.norm(normal_vector)
+
+        # Calculate angles around x, y, and z axes (Euler angles)
+        x_angle = np.arctan2(normal_vector[2], normal_vector[1])
+        y_angle = np.arctan2(-normal_vector[0], np.sqrt(normal_vector[1]**2 + normal_vector[2]**2))
+        z_angle = np.arctan2(v2[0], v1[0])
+
+        # Convert angles from radians to degrees
+        """x_angle = np.degrees(x_angle)
+        y_angle = np.degrees(y_angle)
+        z_angle = np.degrees(z_angle)"""
+
+        return x_angle, y_angle, z_angle
+
+    def get_robot_coords(self, camera_coords):
+        R = np.array([[0.98965,0.14059,-0.028841],
+                    [-0.14345,0.97505,-0.16939],
+                    [0.0043076,0.17177,0.98513]])
+        t = np.array([0.18212,0.11633,0.38649])
+        new_coords = np.dot(R,camera_coords) + t
+        return new_coords
+
+    def get_pickup_locations(self):
+        coords_3d = []
+        align, filters = self.init_camera_streams()
+        try:
+            while True:
+                color_frame, depth_frame = self.get_frames(self.pipeline, align, filters)
+                if not depth_frame or not color_frame:
+                    continue
+            
+                color_image = np.asanyarray(color_frame.get_data())
+                img_color = Image.fromarray(color_image)
+                img_color.save("vision/input_color.jpg")
+                get_logger(__name__).log(logging.DEBUG,
+                                         f"Received images from camera")
+
+                results = self.sm.predict(color_image,False,True,True)
+                print("sm_done")
+                classes, conf_list = self.cm.predict(self.path+"/crops/Crate/")
+                print("cm_done",classes)
+                get_logger(__name__).log(logging.DEBUG,
+                                         f"Received predictions from models")
+                data_image = Image.open(self.path+"/image0.jpg") #seg prediction results
+                color_draw = ImageDraw.Draw(data_image)
+                depth_image = np.asanyarray(depth_frame.get_data())
+                min_depth = 850  # Minimum depth value
+                max_depth = 1700  # Maximum depth value
+                depth_image_clipped = np.clip(depth_image, min_depth, max_depth)
+                normalized_depth = (depth_image_clipped - min_depth) / (max_depth - min_depth)
+                depth_colormap = cv2.applyColorMap((normalized_depth * 255).astype(np.uint8), cv2.COLORMAP_JET)
+                cv2.imwrite("vision/depth.jpg", depth_colormap)
+
+                masks = results[0].masks
+                #for mask_raw, label in zip(masks,classes): #do classification result interpretation
+                for (mask_raw,cls) in zip(masks,classes):        
+                    rel_2d_points = self.get_2d_points(mask_raw, data_image.size, color_draw)
+                    if not rel_2d_points:
+                        get_logger(__name__).log(logging.DEBUG,
+                                                 "Box has incorrect shape -> no crate")
+                        continue
+
+                    rel_3d_points = self.get_camera_3d_points(depth_frame, rel_2d_points, self.color_intrin,data_image.size)
+                    success, rot, trans = cv2.solvePnP(np.array(rel_3d_points).astype("float32"),np.array(rel_2d_points).astype("float32"),self.k,self.d)
+                    self.show_3d_points(rel_3d_points[:4],rot, trans, self.k, self.d, color_draw)
+
+                    robot_coords = []
+                    for coord in rel_3d_points[:4]:
+                        rob_coord = self.get_robot_coords(coord)
+                        robot_coords.append(rob_coord)
+            
+                    x,y,z = self.get_robot_coords(rel_3d_points[4])
+                    rx,ry,rz = self.calculate_rotational_angles(robot_coords)
+                    crate_height = self.get_crate_height(robot_coords)
+                    coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
+                    point = tuple(round(c,5) for c in (x,y,z,rx,ry,rz))
+                    print("Point",point)
+                    get_logger(__name__).log(logging.DEBUG,
+                                             f"Calculated robot point: {point}, crate_height: {point}")
+                    color_draw.text(rel_2d_points[4], f"{cls,x,y,z,rx,ry,rz},{cls}", fill=(255,255,255))
+                    
+                #data_image.show()
+                data_image.save("vision/distance_annot.jpg")
+                files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True) #TODO: move outside of vision function
+                for f in files:
+                    os.remove(f) #TODO: add later
+                break
+            return coords_3d
+        except Exception as e:
+            print(e)
+            pass
+        finally:
+            self.pipeline.stop()
+    
+    def get_valid_pickup_loc(self):
         """
-        - take image (from home position)
-        - detect crates on image
-         - display image
-         - if no crates -> retake
-           - if no crates -> error
-         - if assistance crate on image -> send status assitance and end command
-        - if crates:
-         - identify highest crate
-         - calculate coordinates + method (suction/hook)
-         (maybe return all coordinates + methods)
-        - return errors + coordinates + methods
+        Goal:
+        - Remove invalid results (limits & NoCrate)
+        - Search for highest crate
+        - If PickupCrate - return coords
+        - If NoPickupCrate - return assistance message
         """
-        pass
+        results = self.get_pickup_locations()
+
+        val_results = []
+        for res in results:
+            coords = res["coords"]
+            cls = res["class"]
+            if not -1.5 < coords[0] < 1.5 or not -1.6 < coords[1] < -0.6 or coords[2] > 1:
+                get_logger(__name__).log(logging.DEBUG,"Coords not within limits!, Result ignored")
+                continue
+            elif cls == "NoCrate":
+                get_logger(__name__).log(logging.DEBUG,
+                                         "Ignored due to NoCrate class")
+            else:
+                val_results.append(res)
+        
+        if val_results:
+            def get_coord_2(item):
+                return item["coords"][2]
+            highest_entry = max(val_results, key=get_coord_2)
+
+            if highest_entry["class"] == "NoPickupCrate":
+                raise NoPickUpCrateException("Highest Crate is NoPickupCrate")
+            else:
+                return highest_entry["coords"],highest_entry["height"]
+        else:
+            raise NoDetectedCratesException()
+    
+    def get_crate_height(self,coords):
+        def calc_3d_distance(a,b):
+            x1,y1,z1 = a
+            x2,y2,z2 = b
+            distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
+            return distance
+
+        approx_height = calc_3d_distance(coords[0][:3],coords[2][:3])
+        actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"]/1000
+
+        return actual_height
+    
+  
+if __name__ == "__main__":
+  start_time = time.time()
+  vision = VisionClient()
+  init_time = time.time()
+  print("Time",init_time-start_time)
+  vision.connect()
+  connect_time = time.time()
+  print("Time",connect_time-init_time)
+  coords, height = vision.get_valid_pickup_loc()
+  print("Coords",coords,"Height",height)
+  complete_time = time.time()
+  print("Time",complete_time-connect_time)

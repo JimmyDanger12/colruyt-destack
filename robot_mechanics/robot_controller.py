@@ -33,7 +33,7 @@ class RobotController():
         self.pre_pick = [0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
         self.place_pos = [0.72478, 0.39171, 0.0236, -0.006, -1.59, 0.02] 
         self.pre_place = [-0.72478, 0.39171, 0.2236, -0.006, -1.59, 0.02]
-        self.via_pose = [-0.612, -0.305, 340, 0.55, -1.5, 0.56]
+        self.via_pose = [-0.612, -0.305, 0.340, 0.55, -1.5, 0.56]
         #TODO: set robot home position
     
     def connect(self):
@@ -92,12 +92,13 @@ class RobotController():
             f"Retrieval of pick position started")
         pick_coords = [-0.17534, -1.10184, -0.011093, -8.8043, 1.0891, -5.7366] #TODO: get coords from vision
         crate_size = 0.33
+        pick_loc = pick_coords[0:2]
+        pick_ori = pick_coords[3:5]
+        picked_ori = [pick_ori[0], pick_ori[1], pick_ori[2] -20]
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_size}")
         pick_coords[3] += -20 #TODO: why here?
-        get_logger(__name__).log(logging.DEBUG,
-            f"Retrieval of pick coordinates completed")
-        return pick_coords, crate_size
+        return pick_coords, crate_size, pick_loc, pick_ori, picked_ori
 
     def move_pre_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
@@ -179,7 +180,7 @@ class RobotController():
         time.sleep(3)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, False)
         get_logger(__name__).log(logging.DEBUG,
-        f"retracted safety system")
+            f"retracted safety system")
 
     def move_on_conv_pos(self, crate_size, picked_ori):
         get_logger(__name__).log(logging.DEBUG,
@@ -199,10 +200,10 @@ class RobotController():
 
     def turn_conv_on(self):
         get_logger(__name__).log(logging.DEBUG,
-                f"drop off comfirmed, turning on conveyer")
+            f"drop off comfirmed, turning on conveyer")
         self.rob.set_analog_out(ANA_OUT_CONV, 1)
         get_logger(__name__).log(logging.DEBUG,
-                f"turned conveyer on")
+            f"turned conveyer on")
 
 
 

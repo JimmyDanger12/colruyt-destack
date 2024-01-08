@@ -47,50 +47,65 @@ class RobotController():
             #self.vision_client.connect()
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
-                                     f"Error when connecting to robot: {e}")
+                 f"Error when connecting to robot: {e}")
             status = Status.Disconnected       
         self._change_status(status)   
     
-    def start_carrier_unloading(self):
-        i = 0
-        while True: #Loop until all crates are unloaded
-            i += 1
+    def start_destack(self):
+
+        while True:
             get_logger(__name__).log(logging.INFO,
-                                     f"Started unloading of Crate (#{i})")
-            
-            self.move_start_pos() 
-            pick_pos, crate_size = self.retrieve_pick_pos()
-            if pick_pos == []:
-                break #TODO: add alert if no coordinates were returned
+                f"Starting move to start pos")
+            self.move_start_pos(self.tcp_bar) 
+            get_logger(__name__).log(logging.INFO,
+                f"Starting retreiving pick pos")
+            pick_coords, pick_loc, pick_ori, picked_ori, crate_size = self.retrieve_pick_pos()
+            if pick_coords == []:
+                break #alert and log
+            get_logger(__name__).log(logging.INFO,
+                f"Pick pos retreived and starting move to pre pick pos")
             self.move_pre_pick_pos() 
-            self.move_far_pickup_pos(pick_pos) 
-            self.move_close_pickup_pos(pick_pos) 
-            break
+            get_logger(__name__).log(logging.INFO,
+                f"Moved to pre pick pos, starting move to pre picked")
+            self.move_pre_picked_pos(pick_loc, pick_ori) 
+            get_logger(__name__).log(logging.INFO,
+                f"Moved to pre picked, starting picking")
+            self.move_picked_pos(pick_loc, pick_ori, picked_ori) 
+            get_logger(__name__).log(logging.INFO,
+                f"Crate picked, staring move out carrier")
             self.move_out_carrier(pick_loc, picked_ori) 
+            get_logger(__name__).log(logging.INFO,
+                f"Out of carrier, deploying safety system")
             self.depl_safety_syst()
+            get_logger(__name__).log(logging.INFO,
+                f"Safety system deployed, starting move to pre pick")
             self.move_pre_place_pos(picked_ori) 
+            get_logger(__name__).log(logging.INFO,
+                f"Moved to pre place pos, retracting safety system")
             self.retr_safety_syst()
+            get_logger(__name__).log(logging.INFO,
+                f"Safety system retracted, staring move on conveyer")
             self.move_on_conv_pos(crate_size, picked_ori) 
+            get_logger(__name__).log(logging.INFO,
+                f"Moved on conveyer, starting move place crate")
             self.move_place_crate() 
+            get_logger(__name__).log(logging.INFO,
+                f"Crate placed, checking dropoff")
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
             if dropoff_value == True:
                 self.turn_conv_on()
             else: 
                 break #add alert
+            get_logger(__name__).log(logging.INFO,
+                f"Dropoff confirmed")
         return
     
 
-    def move_start_pos(self):
-        get_logger(__name__).log(logging.DEBUG,
-                f"Move start pos started")
-        
-        self.rob.set_tcp(self.tcp_bar)
-        get_logger(__name__).log(logging.DEBUG,
-            f"set tcp to {self.tcp_bar}")
-        pose=self.rob.getl()
-
-        get_logger(__name__).log(logging.DEBUG,
-                                 f"Attempting to move to coordinates {self.pre_place}")
+    def move_start_pos(self, tcp_bar):
+        self.rob.set_tcp(tcp_bar)
+        get_logger(__name__).log(logging.INFO,
+            f"set tcp")
+        print(self.pre_place, type(self.pre_place))
         self.rob.movel(self.pre_place, acc=1, vel=0.5)
 
         get_logger(__name__).log(logging.DEBUG,
@@ -112,60 +127,15 @@ class RobotController():
         return pick_coords, crate_size
 
     def move_pre_pick_pos(self):
-        get_logger(__name__).log(logging.DEBUG,
-                                 "Move pre-pick pos started")
-        
-        get_logger(__name__).log(logging.DEBUG,
-                            f"Attempting to move to coordinates {self.pre_place}")
-        self.rob.movec(pose_via = self.via_pose, 
-                       pose_to = self.pre_pick, 
-                       acc=1, 
-                       vel=0.5, 
-                       r=0.2)
-
-        get_logger(__name__).log(logging.DEBUG,
-                                 "Move pre-pick pos completed")
+        self.rob.movec(self.via_pose, self.pre_pick, acc=1, vel=0.5, r=0.2, mode=1)
     
-    def move_far_pickup_pos(self, pick_coords):
-        get_logger(__name__).log(logging.DEBUG,
-                            "Move far_pickup_pos started")
+    def move_pre_picked_pos(self, pick_loc, pick_ori):
+        self.rob.movel(self.pre_pick[0:2] + pick_ori, acc=1, vel= 0.25)
+        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03, pick_ori[0]+10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.25)
 
-        tilted_pos = self.pre_pick[0:3]+pick_coords[3:6] #Get EoAT tilt correct first
-        get_logger(__name__).log(logging.DEBUG,
-                                 f"Attempting to move to coordinates {tilted_pos}")
-        self.rob.movel(tilted_pos,
-                       acc=1, 
-                       vel= 0.25)
-        
-        pos_mods = [0,0,0.03,10,0,0]
-        far_pickup_pos = [c+x for c,x in zip(pick_coords,pos_mods)]
-        get_logger(__name__).log(logging.DEBUG,
-                                 f"Attempting to move to coords {far_pickup_pos}")
-        self.rob.movel(far_pickup_pos, 
-                       acc=1, 
-                       vel= 0.25)
-
-        get_logger(__name__).log(logging.DEBUG,
-                            "Move far_pickup_pos completed")
-
-    def move_close_pickup_pos(self, pick_coords):
-        get_logger(__name__).log(logging.DEBUG,
-                            "Move close_pickup_pos started")
-        
-        in_crate_mod = [0,0,0,10,0,0]
-        in_crate_pos = [c+x for c,x in zip(pick_coords,in_crate_mod)]
-        get_logger(__name__).log(logging.DEBUG,
-                                 f"Attempting to move to coords {in_crate_pos}")
-        self.rob.movel(in_crate_pos, #TODO: why not relative?
-                       acc=1, 
-                       vel= 0.1)
-
-        get_logger(__name__).log(logging.DEBUG,
-                                 f"Attempting to move to {pick_coords}")
-        self.rob.movel(pick_coords, 
-                       acc=1, 
-                       vel= 0.1)
-        
+    def move_picked_pos(self, pick_loc, pick_ori, picked_ori):
+        self.rob.movel(pick_loc + [pick_ori[0]+10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.1)
+        self.rob.movel(pick_loc + pick_ori, acc=1, vel= 0.1)
         self.rob.set_tcp(self.tcp_plate)
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp to {self.tcp_plate}")
@@ -183,13 +153,13 @@ class RobotController():
 
     def move_out_carrier(self, pick_loc, picked_ori):
         self.rob.set_tcp(self.tcp_bar)
-        self.rob.movel([0, 0, 0.03, 0, 0, 0], a=0.5, v= 0.1, wait=False, relative=True)
-        self.rob.movel([pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03 , picked_ori], a=1, v= 0.25,) #wait=False)
+        self.rob.movel([0, 0, 0.03, 0, 0, 0], acc=0.5, vel= 0.1, wait=False, relative=True)
+        self.rob.movel([pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03] + picked_ori, acc=1, vel= 0.25, wait=False)
         while True:
             pressure_value = self.rob.get_analog_in(ANA_IN_PRESSR) + self.rob.get_analog_in(ANA_IN_PRESSL)
             if pressure_value < 800:
                 self.stop()
-            if self.rob.get_pose() == [pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03 , picked_ori]:
+            if self.rob.get_pose() == [pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03] + picked_ori:
                 break
 
 
@@ -201,8 +171,8 @@ class RobotController():
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, False)
 
     def move_pre_place_pos(self, picked_ori):
-        self.rob.movel([self.pre_pick[0:2],picked_ori], a=1, v= 1,)
-        self.rob.movec([self.via_pose[0:2],picked_ori], [self.pre_place[0:2],picked_ori], a=1, v=0.5, r=0, mode=1)
+        self.rob.movel(self.pre_pick[0:2] + picked_ori, acc=1, vel= 1)
+        self.rob.movec(self.via_pose[0:2] + picked_ori, self.pre_place[0:2] + picked_ori, acc=1, vel=0.5, r=0, mode=1)
 
     def retr_safety_syst(self):
         self.rob.set_analog_out(ANA_OUT_CONV, 0)
@@ -213,12 +183,12 @@ class RobotController():
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, False)
 
     def move_on_conv_pos(self, crate_size, picked_ori):
-        self.rob.movel([self.place_pos[0], self.place_pos[1], self.place_pos[2]+crate_size-20, picked_ori], a=1, v= 1)
+        self.rob.movel([self.place_pos[0], self.place_pos[1], self.place_pos[2]+crate_size-20] + picked_ori, acc=1, vel= 1)
 
     def move_place_crate(self):
-        self.rob.movel([self.place_pos], a=1, v= 1)
+        self.rob.movel(self.place_pos, acc=1, vel= 1)
         time.sleep(5)
-        self.rob.movel(self.pre_place, a=1, v= 1)
+        self.rob.movel(self.pre_place, acc=1, vel= 1)
 
     def turn_conv_on(self):
         self.rob.set_analog_out(ANA_OUT_CONV, 1)

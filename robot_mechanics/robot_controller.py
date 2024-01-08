@@ -4,6 +4,7 @@ from robot_mechanics.status import Status
 from backend_logging import get_logger
 import logging
 import time
+import numpy
 
 DIG_OUT_CYL_BOT = 1
 DIG_OUT_CYL_SLI = 2
@@ -20,7 +21,7 @@ class RobotController():
     def __init__(self, ip, tcp, handler):
         self.handler = handler
         self.ip = ip
-        self.vision_client = VisionClient() #maybe move to connect method
+        #self.vision_client = VisionClient() #maybe move to connect method
         self.rob = None
         self.tcp = tcp
         self.robot_position = None #use? or always getl in movement functions
@@ -55,14 +56,14 @@ class RobotController():
 
         while True:
             
-            #self.move_start_pos(self.tcp_bar) 
+            self.move_start_pos() 
             pick_coords, pick_loc, pick_ori, picked_ori, crate_size = self.retrieve_pick_pos()
             if pick_coords == []:
                 break #alert and log
-            #self.move_pre_pick_pos() 
+            self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
+            self.move_picked_pos(pick_loc, pick_ori) 
             break
-            self.move_picked_pos(pick_loc, pick_ori, picked_ori) 
             self.move_out_carrier(pick_loc, picked_ori) 
             self.depl_safety_syst()
             self.move_pre_place_pos(picked_ori) 
@@ -90,20 +91,17 @@ class RobotController():
     def retrieve_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
-        pick_coords = [-0.14917, -1.07294, -0.08029, 1.2, -1.2, 1.2] #TODO: get coords from vision
+        pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] #TODO: get coords from vision
         crate_size = 0.33
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_size}")
-        #picked_coords = pick_coords
-        #picked_coords[3] += -20
         pick_loc = pick_coords[0:3]
         pick_ori = pick_coords[3:6]
-        picked_ori = [pick_ori[0]-20, pick_ori[1], pick_ori[2]]
-
+        picked_ori = [pick_ori[0]-20, pick_ori[1], pick_ori[2]]  #TODO: prob hard coded picked ori 
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
-        return pick_coords, pick_loc, pick_ori, picked_ori, crate_size     #pick_coords[0:3], pick_coords[3:6], picked_coords[3:6], crate_size
-
+        return pick_coords, pick_loc, pick_ori, picked_ori, crate_size
+    
     def move_pre_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")
@@ -111,35 +109,24 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre pick pos")
     
-    def move_pre_picked_pos(self, pick_loc, pick_ori, ):
-        self.rob.set_tcp(self.tcp_bar)
+    def move_pre_picked_pos(self, pick_loc, pick_ori):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
         self.rob.movel(self.pre_pick[0:3] + pick_ori, acc=1, vel= 0.05)
-        coords_to_mv_to = [pick_loc[0], pick_loc[1], pick_loc[2]+0.03, pick_ori[0]-0.3, pick_ori[1], pick_ori[2]]
-        print(coords_to_mv_to)
-        self.rob.movel([0, 0, 0, 0.3, 0, 0], acc=1, vel=0.02, relative= True)
-        #self.rob.movel(coords_to_mv_to, acc=1, vel= 0.025)
-        get_logger(__name__).log(logging.DEBUG,
-            f"completed move to pre picked")
-
-    def move_picked_pos(self, pick_loc, pick_ori):
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting picking")
-        self.rob.movel(pick_loc + [pick_ori[0]-10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.01)
-        self.rob.movel(pick_loc + pick_ori, acc=1, vel= 0.01)
+        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc= 1, vel= 0.05)
         self.rob.set_tcp(self.tcp_plate)
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp to {self.tcp_plate}")
-        
-        tilt_movement = [0,0,0,-20,0,0]
+        self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.02)
         get_logger(__name__).log(logging.DEBUG,
-            f"Attempting to move (rel) by {tilt_movement}")
-        self.rob.movel(tilt_movement, #Rotate around plate
-                       acc=0.5, 
-                       vel= 0.01, 
-                       relative=True)
+            f"completed move to pre picked")
 
+    def move_picked_pos(self):
+        get_logger(__name__).log(logging.DEBUG,
+            f"starting picking")
+        self.rob.movel([0, 0, -0.05, 0, 0, 0], acc=1, vel= 0.01, relative= True)
+        #self.rob.movel(pick_loc + pick_ori, acc=1, vel= 0.01)
+        self.rob.movel_tool([0, 0, 0, 0, 0.80, 0], acc= 1, vel= 0.01)
         get_logger(__name__).log(logging.DEBUG,
             "Move picked_pos completed")
 
@@ -147,8 +134,8 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"staring move out carrier")
         self.rob.set_tcp(self.tcp_bar)
-        self.rob.movel([0, 0, 0.03, 0, 0, 0], acc=0.5, vel= 0.01, wait=False, relative=True)
-        self.rob.movel([pick_loc[0], self.pre_pick[1], pick_loc[2]+0.03] + picked_ori, acc=1, vel= 0.025, wait=False)
+        self.rob.movel([0, 0, 0.05, 0, 0, 0], acc=0.5, vel= 0.01, relative=True)
+        self.rob.movel([pick_loc[0], self.pre_pick[1], pick_loc[2]+0.05] + picked_ori, acc=1, vel= 0.025, wait=False)
         while True:
             pressure_value = self.rob.get_analog_in(ANA_IN_PRESSR) + self.rob.get_analog_in(ANA_IN_PRESSL)
             if pressure_value < 800:
@@ -176,7 +163,7 @@ class RobotController():
         self.rob.movel(self.pre_pick[0:3] + picked_ori, acc=1, vel= 1)
         self.rob.movec(self.via_pose[0:3] + picked_ori, self.pre_place[0:3] + picked_ori, acc=1, vel=0.5, r=0, mode=1)
         get_logger(__name__).log(logging.DEBUG,
-            f"completed move to pre pick")
+            f"completed move to pre place")
 
     def retr_safety_syst(self):
         get_logger(__name__).log(logging.DEBUG,
@@ -201,6 +188,7 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move place crate")
         self.rob.movel(self.place_pos, acc=1, vel= 1)
+        #self.rob.movel_tool([0, 0, 0, 0, -0.2, 0], acc= 1, vel= 0.01)
         time.sleep(5)
         self.rob.movel(self.pre_place, acc=1, vel= 1)
         get_logger(__name__).log(logging.DEBUG,

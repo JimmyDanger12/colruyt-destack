@@ -30,10 +30,10 @@ class RobotController():
         self.tcp_bar = [0, 0.02, 0.1095, 0, 0, 0]
         self.tcp_plate = [0, -0.125, 0.0895, 0, 0, 0]
 
-        self.pre_pick = [0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
+        self.pre_pick = [-0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
         self.place_pos = [0.72478, 0.39171, 0.0236, -0.006, -1.59, 0.02] 
         self.pre_place = [-0.72478, 0.39171, 0.2236, -0.006, -1.59, 0.02]
-        self.via_pose = [-0.612, -0.305, 340, 0.55, -1.5, 0.56]
+        self.via_pose = [-0.612, -0.305, 0.340, 0.55, -1.5, 0.56]
         #TODO: set robot home position
     
     def connect(self):
@@ -82,7 +82,6 @@ class RobotController():
         self.rob.set_tcp(tcp_bar)
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp")
-        print(self.pre_place, type(self.pre_place))
         self.rob.movel(self.pre_place, acc=1, vel=0.5)
         get_logger(__name__).log(logging.DEBUG,
             f"Move start pos completed")
@@ -112,7 +111,7 @@ class RobotController():
     def move_pre_picked_pos(self, pick_loc, pick_ori):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
-        self.rob.movel(self.pre_pick[0:2] + pick_ori, acc=1, vel= 0.25)
+        self.rob.movel(self.pre_pick[0:3] + pick_ori, acc=1, vel= 0.25)
         self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03, pick_ori[0]+10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.25)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre picked")

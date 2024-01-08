@@ -90,19 +90,22 @@ class RobotController():
     def retrieve_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
+        
         pick_coords = [-0.17534, -1.10184, -0.011093, -8.8043, 1.0891, -5.7366] #TODO: get coords from vision
         crate_size = 0.33
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_size}")
-        pick_coords[3] += -20 #TODO: why here?
+        picked_coords = pick_coords
+        picked_coords[3] += -20
+
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
-        return pick_coords, crate_size
+        return pick_coords,pick_coords[0:3],pick_coords[3:6], picked_coords[3:6],crate_size
 
     def move_pre_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")
-        self.rob.movec(self.via_pose, self.pre_pick, acc=1, vel=0.5, r=0.2, mode=1)
+        self.rob.movec(self.via_pose, self.pre_pick, acc=1, vel=0.5)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre pick pos")
     

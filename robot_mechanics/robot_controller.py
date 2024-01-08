@@ -1,5 +1,5 @@
 import urx
-from vision.vision_client import VisionClient
+from vision.vision_client import VisionClient, NoPickUpCrateException, NoDetectedCratesException
 from robot_mechanics.status import Status
 from backend_logging import get_logger
 import logging
@@ -45,7 +45,7 @@ class RobotController():
             status = Status.Connected
             get_logger(__name__).log(logging.INFO,
                             "Robot connected")
-            #self.vision_client.connect()
+            self.vision_client.connect()
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                  f"Error when connecting to robot: {e}")
@@ -53,7 +53,6 @@ class RobotController():
         self._change_status(status)   
     
     def start_destack(self):
-
         while True:
             
             self.move_start_pos() 
@@ -91,17 +90,29 @@ class RobotController():
     def retrieve_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
-        pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] #TODO: get coords from vision
-        crate_size = 0.33
+        try:
+            pick_coords, crate_height = self.vision_client.get_valid_pickup_loc()
+        except NoDetectedCratesException:
+            get_logger(__name__).log(logging.INFO,
+                "No Crates detected")
+            #TODO: here leave robot movement
+        except NoPickUpCrateException:
+            get_logger(__name__).log(logging.INFO,
+                "Unpickable crate detected")
+            #TODO: here raise to worker
+        pick_coords = [-0.14917, -1.07294, -0.08029, 1.2, -1.2, 1.2]
+        crate_height = 0.33
         get_logger(__name__).log(logging.DEBUG,
-            f"Retreived coords, crate_size from vision {pick_coords}, {crate_size}")
+            f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
+        #picked_coords = pick_coords
+        #picked_coords[3] += -20
         pick_loc = pick_coords[0:3]
         pick_ori = pick_coords[3:6]
         picked_ori = [pick_ori[0]-20, pick_ori[1], pick_ori[2]]  #TODO: prob hard coded picked ori 
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
-        return pick_coords, pick_loc, pick_ori, picked_ori, crate_size
-    
+        return pick_coords, pick_loc, pick_ori, picked_ori, crate_height     #pick_coords[0:3], pick_coords[3:6], picked_coords[3:6], crate_size
+
     def move_pre_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")

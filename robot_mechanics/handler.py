@@ -37,6 +37,11 @@ class Handler():
         
         get_logger(__name__).log(100,
                             f"Robot Handler starting...")
+        
+        self.test_robot()
+        get_logger(__name__).log(logging.INFO,
+                                 "Robot testing done")
+        return
         try:
             self.start_server()
         except Exception as e:
@@ -47,6 +52,10 @@ class Handler():
                 100,
                 f"Flask server shutting down"
             )
+    
+    def test_robot(self):
+        self.robot_controller.connect()
+        self.robot_controller.start_destack()
     
     def start_server(self):
         self.server = Flask(__name__)
@@ -101,7 +110,7 @@ class Handler():
     
     def change_status(self,status):
         self.status = status
-        self.socketio.emit("update_status",self.status)
+        #self.socketio.emit("update_status",self.status)
 
     def handle_command(self, command):
         if command not in COMMANDS:

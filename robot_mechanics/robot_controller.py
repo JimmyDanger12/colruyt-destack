@@ -30,7 +30,7 @@ class RobotController():
         self.tcp_bar = [0, 0.02, 0.1095, 0, 0, 0]
         self.tcp_plate = [0, -0.125, 0.0895, 0, 0, 0]
 
-        self.pre_pick = [0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
+        self.pre_pick = [-0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
         self.place_pos = [0.72478, 0.39171, 0.0236, -0.006, -1.59, 0.02] 
         self.pre_place = [-0.72478, 0.39171, 0.2236, -0.006, -1.59, 0.02]
         self.via_pose = [-0.612, -0.305, 0.340, 0.55, -1.5, 0.56]
@@ -82,7 +82,6 @@ class RobotController():
         self.rob.set_tcp(tcp_bar)
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp")
-        print(self.pre_place, type(self.pre_place))
         self.rob.movel(self.pre_place, acc=1, vel=0.5)
         get_logger(__name__).log(logging.DEBUG,
             f"Move start pos completed")
@@ -90,6 +89,7 @@ class RobotController():
     def retrieve_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
+        
         pick_coords = [-0.17534, -1.10184, -0.011093, -8.8043, 1.0891, -5.7366] #TODO: get coords from vision
         crate_size = 0.33
         pick_loc = pick_coords[0:2]
@@ -97,20 +97,24 @@ class RobotController():
         picked_ori = [pick_ori[0], pick_ori[1], pick_ori[2] -20]
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_size}")
-        pick_coords[3] += -20 #TODO: why here?
-        return pick_coords, crate_size, pick_loc, pick_ori, picked_ori
+        picked_coords = pick_coords
+        picked_coords[3] += -20
+
+        get_logger(__name__).log(logging.DEBUG,
+            f"Retrieval of pick coordinates completed")
+        return pick_coords,pick_coords[0:3],pick_coords[3:6], picked_coords[3:6],crate_size
 
     def move_pre_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")
-        self.rob.movec(self.via_pose, self.pre_pick, acc=1, vel=0.5, r=0.2, mode=1)
+        self.rob.movec(self.via_pose, self.pre_pick, acc=1, vel=0.5)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre pick pos")
     
     def move_pre_picked_pos(self, pick_loc, pick_ori):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
-        self.rob.movel(self.pre_pick[0:2] + pick_ori, acc=1, vel= 0.25)
+        self.rob.movel(self.pre_pick[0:3] + pick_ori, acc=1, vel= 0.25)
         self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03, pick_ori[0]+10, pick_ori[1], pick_ori[2]], acc=1, vel= 0.25)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre picked")

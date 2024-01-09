@@ -66,17 +66,17 @@ class RobotController():
         while True:
             self.rob.set_tcp(self.tcp_bar)
             self.move_start_pos() 
-            pick_coords, pick_loc, pick_ori, picked_ori, crate_height = self.retrieve_pick_pos()
+            pick_coords, pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
             if pick_coords == []:
                 break #alert and log
             self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
             self.move_picked_pos(pick_loc, pick_ori) 
-            self.move_out_carrier(pick_loc, picked_ori) 
+            self.move_out_carrier(pick_loc) 
             #self.depl_safety_syst()
-            self.move_pre_place_pos(picked_ori) 
+            self.move_pre_place_pos() 
             #self.retr_safety_syst()
-            self.move_on_conv_pos(crate_height, picked_ori) 
+            self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             """dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
             if dropoff_value == True:
@@ -115,10 +115,9 @@ class RobotController():
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
         pick_ori = pick_coords[3:6]
-        picked_ori = [pick_ori[0]-20, pick_ori[1], pick_ori[2]]  #TODO: remove
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
-        return pick_coords, pick_loc, pick_ori, picked_ori, crate_height
+        return pick_coords, pick_loc, pick_ori, crate_height
 
     def move_pre_pick_pos(self):
         get_logger(__name__).log(logging.DEBUG,

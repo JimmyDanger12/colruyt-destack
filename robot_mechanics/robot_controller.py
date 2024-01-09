@@ -56,7 +56,7 @@ class RobotController():
         while True:
             
             self.move_start_pos() 
-            pick_coords, pick_loc, pick_ori, picked_ori, crate_size = self.retrieve_pick_pos()
+            pick_coords, pick_loc, pick_ori, picked_ori, crate_height = self.retrieve_pick_pos()
             if pick_coords == []:
                 break #alert and log
             self.move_pre_pick_pos() 
@@ -67,7 +67,7 @@ class RobotController():
             self.depl_safety_syst()
             self.move_pre_place_pos(picked_ori) 
             self.retr_safety_syst()
-            self.move_on_conv_pos(crate_size, picked_ori) 
+            self.move_on_conv_pos(crate_height, picked_ori) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
             if dropoff_value == True:
@@ -100,12 +100,10 @@ class RobotController():
             get_logger(__name__).log(logging.INFO,
                 "Unpickable crate detected")
             #TODO: here raise to worker
-        pick_coords = [-0.14917, -1.07294, -0.08029, 1.2, -1.2, 1.2]
+        pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
         crate_height = 0.33
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
-        #picked_coords = pick_coords
-        #picked_coords[3] += -20
         pick_loc = pick_coords[0:3]
         pick_ori = pick_coords[3:6]
         picked_ori = [pick_ori[0]-20, pick_ori[1], pick_ori[2]]  #TODO: prob hard coded picked ori 
@@ -188,10 +186,10 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"retracted safety system")
 
-    def move_on_conv_pos(self, crate_size, picked_ori):
+    def move_on_conv_pos(self, crate_height, picked_ori):
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyer")
-        self.rob.movel([self.place_pos[0], self.place_pos[1], self.place_pos[2]+crate_size-20] + picked_ori, acc=1, vel= 1)
+        self.rob.movel([self.place_pos[0], self.place_pos[1], self.place_pos[2]+crate_height-20] + picked_ori, acc=1, vel= 1)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move on conveyer")
 

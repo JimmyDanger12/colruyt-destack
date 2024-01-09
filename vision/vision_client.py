@@ -1,5 +1,4 @@
 import time
-in_time = time.time()
 import cv2
 from PIL import Image, ImageDraw, ImageFont
 import pyrealsense2 as rs
@@ -13,8 +12,6 @@ from backend_logging import get_logger
 import logging
 import pandas as pd
 import math
-import_time = time.time()
-print("Import time:",import_time-in_time)
 
 VISION_PATH = "vision/crops/monkey/predict"
 
@@ -213,7 +210,7 @@ class VisionClient():
                 color_frame, depth_frame = self.get_frames(self.pipeline, align, filters)
                 if not depth_frame or not color_frame:
                     continue
-            
+                    
                 color_image = np.asanyarray(color_frame.get_data())
                 img_color = Image.fromarray(color_image)
                 img_color.save("vision/input_color.jpg")
@@ -221,9 +218,7 @@ class VisionClient():
                                          f"Received images from camera")
 
                 results = self.sm.predict(color_image,False,True,True)
-                print("sm_done")
                 classes, conf_list = self.cm.predict(self.path+"/crops/Crate/")
-                print("cm_done",classes)
                 get_logger(__name__).log(logging.DEBUG,
                                          f"Received predictions from models")
                 data_image = Image.open(self.path+"/image0.jpg") #seg prediction results
@@ -237,8 +232,7 @@ class VisionClient():
                 cv2.imwrite("vision/depth.jpg", depth_colormap)
 
                 masks = results[0].masks
-                #for mask_raw, label in zip(masks,classes): #do classification result interpretation
-                for (mask_raw,cls) in zip(masks,classes):        
+                for (mask_raw,cls) in zip(masks,classes):  
                     rel_2d_points = self.get_2d_points(mask_raw, data_image.size, color_draw)
                     if not rel_2d_points:
                         get_logger(__name__).log(logging.DEBUG,
@@ -259,16 +253,14 @@ class VisionClient():
                     crate_height = self.get_crate_height(robot_coords)
                     coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
                     point = tuple(round(c,5) for c in (x,y,z,rx,ry,rz))
-                    print("Point",point)
                     get_logger(__name__).log(logging.DEBUG,
                                              f"Calculated robot point: {point}, crate_height: {point}")
                     color_draw.text(rel_2d_points[4], f"{cls,x,y,z,rx,ry,rz},{cls}", fill=(255,255,255))
                     
-                #data_image.show()
                 data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True) #TODO: move outside of vision function
                 for f in files:
-                    os.remove(f) #TODO: add later
+                    os.remove(f)
                 break
             return coords_3d
         except Exception as e:
@@ -319,7 +311,9 @@ class VisionClient():
             distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
             return distance
 
-        approx_height = calc_3d_distance(coords[0][:3],coords[2][:3])
+        approx_height_1 = calc_3d_distance(coords[0][:3],coords[2][:3])
+        approx_height_2 = calc_3d_distance(coords[1][:3],coords[3][:3])
+        approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
         actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"]/1000
 
         return actual_height
@@ -329,7 +323,7 @@ if __name__ == "__main__":
   start_time = time.time()
   vision = VisionClient()
   init_time = time.time()
-  print("Time",init_time-start_time)
+  ("Time",init_time-start_time)
   vision.connect()
   connect_time = time.time()
   print("Time",connect_time-init_time)

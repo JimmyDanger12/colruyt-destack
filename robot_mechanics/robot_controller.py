@@ -59,6 +59,7 @@ class RobotController():
         
     
     def start_destack(self):
+        alerted = False
         while True:
             self.rob.set_tcp(self.tcp_bar)
             self.move_start_pos()
@@ -71,6 +72,7 @@ class RobotController():
             except NoPickUpCrateException:
                 get_logger(__name__).log(logging.INFO,
                     "Unpickable crate detected")
+                alerted = True
                 self.alert_worker()
                 break
             self.move_pre_pick_pos() 
@@ -88,9 +90,10 @@ class RobotController():
             else: 
                 break #add alert"""
             break
-        get_logger(__name__).log(logging.INFO,
-                                 "Done/No Boxes detected")
-        self._change_status(Status.Done)
+        if not alerted:
+            get_logger(__name__).log(logging.INFO,
+                                    "Done/No Boxes detected")
+            self._change_status(Status.Done)
     
     def alert_worker(self):
         self._change_status(Status.Alerted)

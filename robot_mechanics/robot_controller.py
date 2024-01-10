@@ -18,14 +18,12 @@ class RobotController():
     This class is responsible for connecting the main script to the robot and
     executing robot commands
     """
-    def __init__(self, ip, tcp, handler):
+    def __init__(self, ip, handler):
         self.handler = handler
         self.ip = ip
         self.vision_client = VisionClient() #maybe move to connect method
         self.rob = None
-        self.tcp = tcp
-        self.robot_position = None #use? or always getl in movement functions
-        self.pick_loc = None
+        
 
         self.tcp_bar = [0.02, 0, 0.1095, 0, 0, 0]
 
@@ -118,8 +116,6 @@ class RobotController():
                 "Unpickable crate detected")
             return
             #TODO: here raise to worker
-        """pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
-        crate_height = 0.33"""
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]

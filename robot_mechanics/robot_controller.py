@@ -77,7 +77,7 @@ class RobotController():
             self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
             self.move_picked_pos() 
-            self.move_out_carrier() 
+            self.move_out_carrier(pick_loc) 
             #self.depl_safety_syst()
             self.move_pre_place_pos() 
             #self.retr_safety_syst()
@@ -179,7 +179,7 @@ class RobotController():
             "Move picked_pos completed")
         
 
-    def move_out_carrier(self):
+    def move_out_carrier(self, pick_loc):
         """
         This function contains the movements:
         - move the crate up 
@@ -188,7 +188,12 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"staring move out carrier")
         self.rob.movel([0, 0, 0.03, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
-        self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
+        if pick_loc[3] >= 0.01 :
+            self.rob.movel([pick_loc[1], -400, pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
+        elif pick_loc [3] < 0.01 : 
+            self.rob.movel([pick_loc[1], -400, self.post_pick] + self.post_pick[3:6], acc=1, vel=0.025)
+        #self.rob.movel([pick_loc[1], self.post_pick[2], pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
+        #self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
         """while True: #TODO: add pressure sensor
             pressure_value = self.rob.get_analog_in(ANA_IN_PRESSR) + self.rob.get_analog_in(ANA_IN_PRESSL)
             if pressure_value < 800:

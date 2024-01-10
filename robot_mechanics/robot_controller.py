@@ -38,7 +38,6 @@ class RobotController():
     def connect(self):
         try:
             self.rob = urx.Robot(self.ip)
-            self.rob.set_tcp(self.tcp)
             status = Status.Connected
             get_logger(__name__).log(logging.INFO,
                 "Robot connected")
@@ -50,7 +49,7 @@ class RobotController():
         self._change_status(status)   
 
     def test_vision(self):
-        self.rob.set_tcp(self.tcp)
+        self.rob.set_tcp(self.tcp_bar)
         self.move_start_pos()
         pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
         self.move_pre_pick_pos()
@@ -89,7 +88,8 @@ class RobotController():
                 self.turn_conv_on()
             else: 
                 break #add alert"""
-            break
+            get_logger(__name__).log(logging.INFO,
+                                     "Crate placed successfully")
         if not alerted:
             get_logger(__name__).log(logging.INFO,
                                     "Done/No Boxes detected")
@@ -124,8 +124,9 @@ class RobotController():
         pick_coords, crate_height = self.vision_client.get_valid_pickup_loc()
         """pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
         crate_height = 0.33"""
-        get_logger(__name__).log(logging.DEBUG,
-            f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
+        pick_coords = [round(c,5) for c in pick_coords]
+        get_logger(__name__).log(logging.INFO,
+            f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
         pick_ori = [1.24, -1.2, 1.24]
         get_logger(__name__).log(logging.DEBUG,
@@ -224,7 +225,9 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre place")
+        print("post_pick")
         self.rob.movel(self.post_pick, acc=1, vel=0.025)
+        print("pre_place")
         self.rob.movels([self.post_via_pose,self.pre_place], acc=1, vel=0.05, radius=0.05)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre place")
@@ -258,7 +261,9 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyer")
         pos = self.place_pos
-        pos[2] += crate_height - 0.185
+        movement = crate_height - 0.185
+        print("Drop_down movement",movement)
+        pos[2] += movement
         self.rob.movel(pos, acc=1, vel=0.025)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move on conveyer")
@@ -297,7 +302,6 @@ class RobotController():
         Hard stop robot
         -> Status Stopped -> priority 1 = high, 2 = low
         """
-        self.rob.close()
         self._change_status(Status.Stopped)
 
     def destack_done(self):

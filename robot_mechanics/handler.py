@@ -32,16 +32,14 @@ class Handler():
         setup_logging(config)
         
         robot_ip = config[FIELD_ROBOT,FIELD_IP]
-        robot_tcp = config[FIELD_ROBOT,FIELD_TCP]
-        self.robot_controller = RobotController(robot_ip, robot_tcp, self)
+        self.robot_controller = RobotController(robot_ip, self)
         
         get_logger(__name__).log(100,
                             f"Robot Handler starting...")
         
-        self.test_vision()
         get_logger(__name__).log(logging.INFO,
                                  "Robot testing done")
-        return
+
         try:
             self.start_server()
         except Exception as e:
@@ -114,7 +112,7 @@ class Handler():
     
     def change_status(self,status):
         self.status = status
-        #self.socketio.emit("update_status",self.status)
+        self.socketio.emit("update_status",self.status)
 
     def handle_command(self, command):
         if command not in COMMANDS:

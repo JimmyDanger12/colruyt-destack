@@ -255,7 +255,7 @@ class VisionClient():
                     coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
                     point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
                     get_logger(__name__).log(logging.DEBUG,
-                                             f"Calculated robot point: {point}, crate_height: {point}")
+                                             f"Calculated pickup point: {point}, crate_height: {point}")
                     color_draw.text(rel_2d_points[4], f"{cls,point},{crate_height}", fill=(255,255,255))
                     
                 data_image.save("vision/distance_annot.jpg")
@@ -304,7 +304,7 @@ class VisionClient():
                 coords = list(highest_entry["coords"])
                 coords[0] += 0.02
                 coords[1] += 0.0475
-                coords[2] += -0.15
+                coords[2] += -0.135
                 return coords,highest_entry["height"]
         else:
             raise NoDetectedCratesException()
@@ -319,8 +319,7 @@ class VisionClient():
         approx_height_1 = calc_3d_distance(coords[0][:3],coords[2][:3])
         approx_height_2 = calc_3d_distance(coords[1][:3],coords[3][:3])
         approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
-        actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"]/1000
-
+        actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
         return actual_height
     
   

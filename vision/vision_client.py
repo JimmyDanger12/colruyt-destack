@@ -301,7 +301,11 @@ class VisionClient():
             if highest_entry["class"] == "NoPickupCrate":
                 raise NoPickUpCrateException("Highest Crate is NoPickupCrate")
             else:
-                return highest_entry["coords"],highest_entry["height"]
+                coords = list(highest_entry["coords"])
+                coords[0] += 0.02
+                coords[1] += 0.0475
+                coords[2] += -0.15
+                return coords,highest_entry["height"]
         else:
             raise NoDetectedCratesException()
     

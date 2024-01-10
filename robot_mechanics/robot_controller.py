@@ -57,6 +57,7 @@ class RobotController():
         pick_coords, pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
         self.move_pre_pick_pos()
         self.move_pre_picked_pos(pick_loc, pick_ori)
+        self.move_picked_pos()
         
     
     def start_destack(self):
@@ -68,8 +69,8 @@ class RobotController():
                 break #alert and log
             self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
-            self.move_picked_pos(pick_loc, pick_ori) 
-            self.move_out_carrier(pick_loc) 
+            self.move_picked_pos() 
+            self.move_out_carrier() 
             #self.depl_safety_syst()
             self.move_pre_place_pos() 
             #self.retr_safety_syst()
@@ -115,13 +116,14 @@ class RobotController():
         except NoPickUpCrateException:
             get_logger(__name__).log(logging.INFO,
                 "Unpickable crate detected")
+            return
             #TODO: here raise to worker
         """pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
         crate_height = 0.33"""
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        pick_ori = pick_coords[3:6]
+        pick_ori = [1.24, -1.2, 1.24]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_coords, pick_loc, pick_ori, crate_height
@@ -162,11 +164,11 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting picking")
-        self.rob.movel([0, 0, -0.0375, 0, 0, 0], acc=1, vel=0.01, relative=True)
+        self.rob.movel([0, 0, -0.0475, 0, 0, 0], acc=1, vel=0.01, relative=True)
         movement = [-0.005, 0 , 0.005, 0, 0.35, 0] #move around hooks
         self.rob.movel_tool(movement, acc=1, vel=0.01)
         movement = [-0.01, 0, -0.05, 0, 0.35, 0] #move around plate
-        movement = [x*1.2 for x in movement]
+        movement = [x*0.8 for x in movement]
         self.rob.movel_tool(movement)
         get_logger(__name__).log(logging.DEBUG,
             "Move picked_pos completed")

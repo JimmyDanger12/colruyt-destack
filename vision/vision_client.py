@@ -1,17 +1,18 @@
 import time
+start_time = time.time()
 import cv2
 from PIL import Image, ImageDraw, ImageFont
 import pyrealsense2 as rs
 import numpy as np
-from vision.classification_model import ClassificationModel
-from vision.segmentation_model import SegmentationModel
 import os
 import glob
-from keras import backend as K
+import math
 from backend_logging import get_logger
 import logging
 import pandas as pd
-import math
+from keras.backend import clear_session
+from vision.classification_model import ClassificationModel
+from vision.segmentation_model import SegmentationModel
 
 VISION_PATH = "vision/crops/monkey/predict"
 
@@ -36,7 +37,7 @@ class VisionClient():
         self.sm.load_model()
         get_logger(__name__).log(logging.DEBUG,
                         f"Segmentation model loaded")
-        K.clear_session()
+        clear_session()
         self.cm = ClassificationModel()
         self.cm.load_model()
         get_logger(__name__).log(logging.DEBUG,
@@ -252,10 +253,10 @@ class VisionClient():
                     rx,ry,rz = self.calculate_rotational_angles(robot_coords)
                     crate_height = self.get_crate_height(robot_coords)
                     coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
-                    point = tuple(round(c,5) for c in (x,y,z,rx,ry,rz))
+                    point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
                     get_logger(__name__).log(logging.DEBUG,
                                              f"Calculated robot point: {point}, crate_height: {point}")
-                    color_draw.text(rel_2d_points[4], f"{cls,x,y,z,rx,ry,rz},{cls}", fill=(255,255,255))
+                    color_draw.text(rel_2d_points[4], f"{cls,point},{crate_height}", fill=(255,255,255))
                     
                 data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True) #TODO: move outside of vision function

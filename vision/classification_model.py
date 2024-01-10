@@ -93,7 +93,7 @@ class ClassificationModel():
 
     def reset_model(self, img_height, img_width, num_classes):
         data_augmentation = keras.Sequential([
-            layers.Lambda(lambda x: x[...,::-1],input_shape=(img_height,img_width,3)),
+            #layers.Lambda(lambda x: x[...,::-1],input_shape=(img_height,img_width,3)),
             layers.RandomRotation(0.3,
                                         fill_mode="reflect",
                                         interpolation="bilinear"),
@@ -122,7 +122,8 @@ class ClassificationModel():
         for file in os.listdir(path):
             file = os.path.join(path,file)
             img = keras.utils.load_img(file)
-            img_array = keras.utils.img_to_array(img)
+            img_array = np.array(keras.utils.img_to_array(img),np.int32)
+            img_array = img_array[:,:,::-1]
             img_array = tf.image.resize(img_array,(256,256))
             img_array = tf.expand_dims(img_array, 0)
 
@@ -183,9 +184,8 @@ params = {
 if __name__ == "__main__":
     a = ClassificationModel()
     #a.load_model()
-    print("train_start")
-    a.train(params, show=True, save=False)
+    a.train(params, show=True, save=True)
     a.test()
-    #path="vision/crops/monkey/predict/crops/Crate"
-    path="vision/data/detected_crops"
+    path="vision/crops/monkey/predict/crops/Crate"
+    #path="vision/data/detected_crops"
     a.predict(path=path)

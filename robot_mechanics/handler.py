@@ -38,7 +38,7 @@ class Handler():
         get_logger(__name__).log(100,
                             f"Robot Handler starting...")
         
-        self.test_robot()
+        self.test_test_vision()
         get_logger(__name__).log(logging.INFO,
                                  "Robot testing done")
         return
@@ -56,6 +56,10 @@ class Handler():
     def test_robot(self):
         self.robot_controller.connect()
         self.robot_controller.start_destack()
+    
+    def test_vision(self):
+        self.robot_controller.connect()
+        self.robot_controller.test_vision()
     
     def start_server(self):
         self.server = Flask(__name__)

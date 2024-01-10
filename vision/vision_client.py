@@ -11,6 +11,7 @@ from backend_logging import get_logger
 import logging
 import pandas as pd
 from keras.backend import clear_session
+from scipy.spatial.transform import Rotation as R
 from vision.classification_model import ClassificationModel
 from vision.segmentation_model import SegmentationModel
 
@@ -31,6 +32,7 @@ class VisionClient():
         self.cm = None
         self.k = None
         self.d = None
+        self.rob = None
     
     def connect(self):
         self.sm = SegmentationModel()
@@ -172,7 +174,7 @@ class VisionClient():
 
     def calculate_rotational_angles(self,plane_coordinates): #TODO: maybe modify
         # Extracting the coordinates of the plane
-        p1, p2, p3, p4 = plane_coordinates
+        p1, p2, p3, p4 = plane_coordinates #(x,y,z)
 
         # Calculate vectors along two edges of the plane
         v1 = np.array(p2) - np.array(p1)
@@ -187,11 +189,17 @@ class VisionClient():
         x_angle = np.arctan2(normal_vector[2], normal_vector[1])
         y_angle = np.arctan2(-normal_vector[0], np.sqrt(normal_vector[1]**2 + normal_vector[2]**2))
         z_angle = np.arctan2(v2[0], v1[0])
+        """d12 = np.array(p2) - np.array(p1)
+        d13 = np.array(p3) - np.array(p1)
+        dz = np.cross(d12, d13)
 
-        # Convert angles from radians to degrees
-        """x_angle = np.degrees(x_angle)
-        y_angle = np.degrees(y_angle)
-        z_angle = np.degrees(z_angle)"""
+        X = d12 / np.linalg.norm(d12)
+        Z = dz / np.linalg.norm(dz)
+        Y = np.cross(Z, X)
+
+        rot = np.column_stack((X,Y,Z))
+        x_angle, y_angle, z_angle = R.from_matrix(rot).as_rotvec(degrees=False) #TODO: maybe as_euler"""
+
 
         return x_angle, y_angle, z_angle
 
@@ -261,11 +269,12 @@ class VisionClient():
                 data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True) #TODO: move outside of vision function
                 for f in files:
-                    os.remove(f)
+                    pass#os.remove(f)
                 break
             return coords_3d
         except Exception as e:
-            print(e)
+            get_logger(__name__).log(logging.WARNING,
+                                     f"Vision Exception {e}")
             pass
         finally:
             self.pipeline.stop()
@@ -321,17 +330,3 @@ class VisionClient():
         approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
         actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
         return actual_height
-    
-  
-if __name__ == "__main__":
-  start_time = time.time()
-  vision = VisionClient()
-  init_time = time.time()
-  ("Time",init_time-start_time)
-  vision.connect()
-  connect_time = time.time()
-  print("Time",connect_time-init_time)
-  coords, height = vision.get_valid_pickup_loc()
-  print("Coords",coords,"Height",height)
-  complete_time = time.time()
-  print("Time",complete_time-connect_time)

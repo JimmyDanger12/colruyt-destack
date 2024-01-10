@@ -1,0 +1,12 @@
+Things still to fix:
+- Drop off motion - increase tilt
+- Pick-up accuracy testing (structured)-> Correct pick-up dynamically
+- Redo pickup-angles calculation
+
+- Be able to pick up lowest row
+- Adjust move_out_carrier
+- Fix unpickable crate alert
+- Fix classification model (for spa/blue crates)
+
+(- Safety system integration)
+(- Sensor integration & conveyor)

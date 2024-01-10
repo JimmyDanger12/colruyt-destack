@@ -21,7 +21,7 @@ class RobotController():
     def __init__(self, ip, handler):
         self.handler = handler
         self.ip = ip
-        self.vision_client = VisionClient() #maybe move to connect method
+        self.vision_client = VisionClient()
         self.rob = None
         
 
@@ -55,7 +55,16 @@ class RobotController():
         self.move_pre_pick_pos()
         self.move_pre_picked_pos(pick_loc, pick_ori)
         self.move_picked_pos()
-        
+    
+    def test_drop_off(self):
+        self.rob.set_tcp(self.tcp_bar)
+        self.rob.movel(self.pre_place,
+                       acc=1,
+                       vel=0.05)
+        crate_height = 0.196
+        #pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
+        self.move_on_conv_pos(crate_height)
+        self.move_place_crate()
     
     def start_destack(self):
         alerted = False
@@ -300,14 +309,13 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"turned conveyer on")
 
-
-
     def stop(self,priority):
         """
         Hard stop robot
         -> Status Stopped -> priority 1 = high, 2 = low
         """
         self._change_status(Status.Stopped)
+        #TODO: Add function to stop robot
 
     def destack_done(self):
         """
@@ -315,6 +323,7 @@ class RobotController():
         -> Status Done
         """
         self._change_status(Status.Done)
+        #TODO: remove / add functionality
 
     def _change_status(self, status):
         self.handler.change_status(status)

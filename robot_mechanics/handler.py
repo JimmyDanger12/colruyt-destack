@@ -39,7 +39,9 @@ class Handler():
         
         get_logger(__name__).log(logging.INFO,
                                  "Robot testing done")
-
+        
+        self.test_vision()
+        return
         try:
             self.start_server()
         except Exception as e:
@@ -58,6 +60,10 @@ class Handler():
     def test_vision(self):
         self.robot_controller.connect()
         self.robot_controller.test_vision()
+    
+    def test_drop_off(self):
+        self.robot_controller.connect()
+        self.robot_controller.test_drop_off()
     
     def start_server(self):
         self.server = Flask(__name__)
@@ -112,7 +118,7 @@ class Handler():
     
     def change_status(self,status):
         self.status = status
-        self.socketio.emit("update_status",self.status)
+        #self.socketio.emit("update_status",self.status)
 
     def handle_command(self, command):
         if command not in COMMANDS:
@@ -139,8 +145,7 @@ class Handler():
                     self.robot_controller.rob.close()
                              
                 get_logger(__name__).log(logging.INFO,
-                            f"Executing command '{command}' finished")   
-                self.change_status(Status.Done)                 
+                            f"Executing command '{command}' finished")                
             else:
                 get_logger(__name__).log(logging.WARNING,
                                          f"No robot connected")

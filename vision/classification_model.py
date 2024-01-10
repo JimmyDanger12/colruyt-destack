@@ -124,7 +124,10 @@ class ClassificationModel():
             img = keras.utils.load_img(file)
             img_array = np.array(keras.utils.img_to_array(img),np.int32)
             img_array = img_array[:,:,::-1]
-            img_array = tf.image.resize(img_array,(256,256))
+            img_array = tf.image.resize(img_array,(256,256),method="bicubic")
+            img_array = np.array(img_array,dtype=np.int32)
+            plt.imshow(img_array)
+            plt.show()
             img_array = tf.expand_dims(img_array, 0)
 
             predictions = self.model.predict(img_array)
@@ -185,7 +188,7 @@ if __name__ == "__main__":
     a = ClassificationModel()
     a.load_model()
     #a.train(params, show=True, save=True)
-    a.test()
+    #a.test()
     path="vision/crops/monkey/predict/crops/Crate"
     #path="vision/data/detected_crops"
     a.predict(path=path)

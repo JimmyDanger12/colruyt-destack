@@ -1,7 +1,7 @@
 class Status():
     Disconnected = "Disconnected"
     Connected = "Connected"
-    Alerted = "Alerted"
+    Alerted = "need_assistance"
     Running = "Running"
     Done = "Done"
     Stopped = "Stopped"

@@ -130,7 +130,7 @@ class Handler():
                 self.change_status(Status.Running)
                 try:
                     if command == CMD_START_DESTACK:
-                        self.robot_controller.start_carrier_unloading()
+                        self.robot_controller.start_destack()
                     elif command == CMD_DESTACK_DONE:
                         self.robot_controller.destack_done()
                     elif command == CMD_EMERGENCY_STOP:

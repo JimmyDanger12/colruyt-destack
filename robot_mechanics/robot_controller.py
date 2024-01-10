@@ -52,7 +52,7 @@ class RobotController():
     def test_vision(self):
         self.rob.set_tcp(self.tcp)
         self.move_start_pos()
-        pick_coords, pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
+        pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
         self.move_pre_pick_pos()
         self.move_pre_picked_pos(pick_loc, pick_ori)
         self.move_picked_pos()
@@ -61,10 +61,18 @@ class RobotController():
     def start_destack(self):
         while True:
             self.rob.set_tcp(self.tcp_bar)
-            self.move_start_pos() 
-            pick_coords, pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
-            if pick_coords == []:
-                break #alert and log
+            self.move_start_pos()
+            try:
+                pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
+            except NoDetectedCratesException:
+                get_logger(__name__).log(logging.INFO,
+                    "No Crates detected")
+                break
+            except NoPickUpCrateException:
+                get_logger(__name__).log(logging.INFO,
+                    "Unpickable crate detected")
+                self.alert_worker()
+                break
             self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
             self.move_picked_pos() 
@@ -80,7 +88,12 @@ class RobotController():
             else: 
                 break #add alert"""
             break
-        return
+        get_logger(__name__).log(logging.INFO,
+                                 "Done/No Boxes detected")
+        self._change_status(Status.Done)
+    
+    def alert_worker(self):
+        self._change_status(Status.Alerted)
 
     def move_start_pos(self):
         """
@@ -105,24 +118,16 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
-        try:
-            pick_coords, crate_height = self.vision_client.get_valid_pickup_loc()
-        except NoDetectedCratesException:
-            get_logger(__name__).log(logging.INFO,
-                "No Crates detected")
-            #TODO: here leave robot movement
-        except NoPickUpCrateException:
-            get_logger(__name__).log(logging.INFO,
-                "Unpickable crate detected")
-            return
-            #TODO: here raise to worker
+        pick_coords, crate_height = self.vision_client.get_valid_pickup_loc()
+        """pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
+        crate_height = 0.33"""
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
         pick_ori = [1.24, -1.2, 1.24]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
-        return pick_coords, pick_loc, pick_ori, crate_height
+        return pick_loc, pick_ori, crate_height
     
 
     def move_pre_pick_pos(self):
@@ -289,7 +294,7 @@ class RobotController():
         Hard stop robot
         -> Status Stopped -> priority 1 = high, 2 = low
         """
-        #self.rob.close()
+        self.rob.close()
         self._change_status(Status.Stopped)
 
     def destack_done(self):

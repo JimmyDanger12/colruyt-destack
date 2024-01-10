@@ -183,8 +183,8 @@ params = {
 
 if __name__ == "__main__":
     a = ClassificationModel()
-    #a.load_model()
-    a.train(params, show=True, save=True)
+    a.load_model()
+    #a.train(params, show=True, save=True)
     a.test()
     path="vision/crops/monkey/predict/crops/Crate"
     #path="vision/data/detected_crops"

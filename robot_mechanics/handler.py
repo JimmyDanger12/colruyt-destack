@@ -38,7 +38,7 @@ class Handler():
         get_logger(__name__).log(100,
                             f"Robot Handler starting...")
         
-        self.test_test_vision()
+        self.test_vision()
         get_logger(__name__).log(logging.INFO,
                                  "Robot testing done")
         return

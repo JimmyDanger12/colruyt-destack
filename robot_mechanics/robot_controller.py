@@ -1,5 +1,5 @@
 import urx
-#from vision.vision_client import NoPickUpCrateException, NoDetectedCratesException, VisionClient
+from vision.vision_client import NoPickUpCrateException, NoDetectedCratesException, VisionClient
 from robot_mechanics.status import Status
 from backend_logging import get_logger
 import logging
@@ -21,7 +21,7 @@ class RobotController():
     def __init__(self, ip, tcp, handler):
         self.handler = handler
         self.ip = ip
-        #self.vision_client = VisionClient() #maybe move to connect method
+        self.vision_client = VisionClient() #maybe move to connect method
         self.rob = None
         self.tcp = tcp
         self.robot_position = None #use? or always getl in movement functions
@@ -44,12 +44,20 @@ class RobotController():
             status = Status.Connected
             get_logger(__name__).log(logging.INFO,
                 "Robot connected")
-            #self.vision_client.connect()
+            self.vision_client.connect()
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                 f"Error when connecting to robot: {e}")
             status = Status.Disconnected       
         self._change_status(status)   
+
+    def test_vision(self):
+        self.rob.set_tcp(self.tcp)
+        self.move_start_pos()
+        pick_coords, pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
+        self.move_pre_pick_pos()
+        self.move_pre_picked_pos(pick_loc, pick_ori)
+        
     
     def start_destack(self):
         while True:
@@ -98,7 +106,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
-        """try:
+        try:
             pick_coords, crate_height = self.vision_client.get_valid_pickup_loc()
         except NoDetectedCratesException:
             get_logger(__name__).log(logging.INFO,
@@ -107,9 +115,9 @@ class RobotController():
         except NoPickUpCrateException:
             get_logger(__name__).log(logging.INFO,
                 "Unpickable crate detected")
-            #TODO: here raise to worker"""
-        pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
-        crate_height = 0.33
+            #TODO: here raise to worker
+        """pick_coords = [-0.18016, -1.05289, -0.11338, 1.24, -1.2, 1.24] 
+        crate_height = 0.33"""
         get_logger(__name__).log(logging.DEBUG,
             f"Retreived coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]

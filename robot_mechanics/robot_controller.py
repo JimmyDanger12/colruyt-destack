@@ -76,6 +76,11 @@ class RobotController():
         return
 
     def move_start_pos(self):
+        """
+        This function contains:
+        - move to start position 
+        - set the tool center point 
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"Starting move to start pos")
         self.rob.set_tcp(self.tcp_bar) 
@@ -87,6 +92,10 @@ class RobotController():
         
 
     def retrieve_pick_pos(self):
+        """
+        This function contains:
+        -  
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick position started")
         """try:
@@ -113,7 +122,7 @@ class RobotController():
     def move_pre_pick_pos(self):
         """
         This function contains the movements:
-        - to pre-pick position
+        - move to pre-pick position
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")
@@ -125,13 +134,11 @@ class RobotController():
     def move_pre_picked_pos(self, pick_loc, pick_ori):
         """
         This function contains the movements:
-        - to pre-pick position
-        - to just over pick position
+        - move to just above pick position
         - tilt forward to allow movement on to crate
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
-        self.rob.movel(self.pre_pick, acc=1, vel=0.05)
         self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.025)
         self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.01)
         get_logger(__name__).log(logging.DEBUG,
@@ -141,7 +148,9 @@ class RobotController():
     def move_picked_pos(self):
         """
         This function contains the movements:
-        - 
+        - move down on on the crate
+        - tilt back around the hooks to vertical position
+        - tilt back around the bottom of the plate to pick up crate
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting picking")
@@ -156,6 +165,11 @@ class RobotController():
         
 
     def move_out_carrier(self):
+        """
+        This function contains the movements:
+        - move the crate up 
+        - move the crate back out of the carrier
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"staring move out carrier")
         self.rob.movel([0, 0, 0.03, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
@@ -171,6 +185,12 @@ class RobotController():
 
 
     def depl_safety_syst(self):
+        """
+        This function contains:
+        - expaning the bottom plate
+        - expanding the safety sliders
+        - retracting the bottom plate
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"deploying safety system")
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, True)
@@ -183,16 +203,27 @@ class RobotController():
         
 
     def move_pre_place_pos(self):
+        """
+        This function contains the movements:
+        - move to post pick 
+        - move to pre place 
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre place")
         self.rob.movel(self.post_pick, acc=1, vel=0.025)
         self.rob.movels([self.post_via_pose,self.pre_place], acc=1, vel=0.05, radius=0.05)
-        self.rob.movel(self.pre_place, acc=1, vel=0.025)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre place")
         
 
     def retr_safety_syst(self):
+        """
+        This function contains:
+        - turning the conveyer off
+        - expaning bottom plate 
+        - retracting safety sliders
+        - retracting bottom plate
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"retracting safety system")
         self.rob.set_analog_out(ANA_OUT_CONV, 0)
@@ -206,6 +237,10 @@ class RobotController():
         
 
     def move_on_conv_pos(self, crate_height):
+        """
+        This function contains the movements:
+        - move crate on conveyer
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyer")
         pos = self.place_pos
@@ -216,6 +251,11 @@ class RobotController():
         
 
     def move_place_crate(self):
+        """
+        This function contains the movements:
+        - tilt foward around the hooks to place the crate
+        - move up from the placed crate 
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move place crate")
         movement = [0.004, 0 , -0.004, 0, -0.25, 0] #move around hooks
@@ -226,6 +266,10 @@ class RobotController():
         
 
     def turn_conv_on(self):
+        """
+        This function contains:
+        - turing the conveyer on 
+        """
         get_logger(__name__).log(logging.DEBUG,
             f"drop off comfirmed, turning on conveyer")
         self.rob.set_analog_out(ANA_OUT_CONV, 1)

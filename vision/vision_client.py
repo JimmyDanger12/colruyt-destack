@@ -221,8 +221,8 @@ class VisionClient():
                 data_image = Image.open(self.path+"/image0.jpg") #seg prediction results
                 color_draw = ImageDraw.Draw(data_image)
                 depth_image = np.asanyarray(depth_frame.get_data())
-                min_depth = 850  # Minimum depth value
-                max_depth = 1700  # Maximum depth value
+                min_depth = 850
+                max_depth = 1700
                 depth_image_clipped = np.clip(depth_image, min_depth, max_depth)
                 normalized_depth = (depth_image_clipped - min_depth) / (max_depth - min_depth)
                 depth_colormap = cv2.applyColorMap((normalized_depth * 255).astype(np.uint8), cv2.COLORMAP_JET)
@@ -246,15 +246,14 @@ class VisionClient():
                         robot_coords.append(rob_coord)
             
                     x,y,z = self.get_robot_coords(rel_3d_points[4])
+                    rx,ry,rz = self.calculate_rotational_angles(robot_coords)
                     
                     def sort_robot_coords(coords):
                         top_points = np.sort(coords[:2],axis=0)[::-1]
                         bottom_points = np.sort(coords[2:],axis=0)[::-1]
-
                         return np.concatenate((top_points,bottom_points),axis=0)
-                    
                     robot_coords = sort_robot_coords(robot_coords)
-                    rx,ry,rz = self.calculate_rotational_angles(robot_coords)
+                    
                     crate_height = self.get_crate_height(robot_coords)
                     coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
                     point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
@@ -263,7 +262,7 @@ class VisionClient():
                     color_draw.text(rel_2d_points[4], f"{cls,point},{crate_height}", fill=(255,255,255))
                     
                 data_image.save("vision/distance_annot.jpg")
-                files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True) #TODO: move outside of vision function
+                files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True)
                 for f in files:
                     os.remove(f)
                 break
@@ -326,5 +325,6 @@ class VisionClient():
         approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
 
         actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
+        print("Robot_Coords:",coords)
         print("Act.Hgt:",actual_height,"Apr.Hgt:",round(approx_height,3),"Apr.Diff:",round(approx_height_1-approx_height_2,3))
         return actual_height

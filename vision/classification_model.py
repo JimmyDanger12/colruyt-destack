@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import PIL
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 import keras
 
 from keras import layers
-from keras.models import Sequential
 import os
 from sklearn import metrics
 import numpy as np

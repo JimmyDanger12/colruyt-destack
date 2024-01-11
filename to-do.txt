@@ -1,5 +1,4 @@
 Things still to fix:
-- Drop off motion
 - Pick-up accuracy testing (structured)-> Correct pick-up dynamically
 
 - Be able to pick up lowest row

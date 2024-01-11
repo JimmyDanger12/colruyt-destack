@@ -14,7 +14,3 @@ if __name__ == "__main__":
     print("Coords",coords,"Height",height)
     complete_time = time.time()
     print("Total vision pipeline time",complete_time-connect_time)
-    coords, height = vision.get_valid_pickup_loc()
-    print("Coords",coords,"Height",height)
-    complete_time2 = time.time()
-    print("Total vision pipeline time",complete_time2-complete_time)

@@ -149,7 +149,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")
-        self.rob.movels([self.via_pose, self.pre_pick], acc=1, vel=0.25, radius=0.05)
+        self.rob.movels([self.via_pose, self.pre_pick], acc=1, vel=0.4, radius=0.05)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre pick pos")
         
@@ -195,15 +195,15 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"staring move out carrier")
-        self.rob.movel([0, 0, 0.02, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
+        self.rob.movel([0, 0, 0.01, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
         if pick_loc[2] >= 0.10 :
             get_logger(__name__).log(logging.DEBUG,
             "above base")
-            self.rob.movel([pick_loc[0], -0.5, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.025)
+            self.rob.movel([pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.025)
         elif pick_loc [2] < 0.10 : 
             get_logger(__name__).log(logging.DEBUG,
             "lower then base")
-            self.rob.movel([pick_loc[0], -0.5, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.025)
+            self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([pick_loc[1], self.post_pick[2], pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
         """while True: #TODO: add pressure sensor

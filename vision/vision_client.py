@@ -309,7 +309,7 @@ class VisionClient():
             else:
                 coords = list(highest_entry["coords"])
                 coords[0] += 0.02
-                coords[1] += 0.0475
+                coords[1] += 0.0425
                 coords[2] += -0.135
                 return coords,highest_entry["height"]
         else:

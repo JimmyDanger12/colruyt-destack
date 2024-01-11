@@ -162,8 +162,8 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
-        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.1)
-        self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.01)
+        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.2)
+        self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.1)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre picked")
         
@@ -177,12 +177,12 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting picking")
-        self.rob.movel([0, 0, -0.035, 0, 0, 0], acc=1, vel=0.01, relative=True)
+        self.rob.movel([0, 0, -0.035, 0, 0, 0], acc=1, vel=0.05, relative=True)
         movement = [-0.005, 0 , 0.005, 0, 0.35, 0] #move around hooks
-        self.rob.movel_tool(movement, acc=1, vel=0.01)
+        self.rob.movel_tool(movement, acc=1, vel=0.05)
         movement = [-0.01, 0, -0.05, 0, 0.35, 0] #move around plate
         movement = [x*0.8 for x in movement]
-        self.rob.movel_tool(movement)
+        self.rob.movel_tool(movement, acc=1, vel=0.02)
         get_logger(__name__).log(logging.DEBUG,
             "Move picked_pos completed")
         
@@ -199,11 +199,11 @@ class RobotController():
         if pick_loc[2] >= 0.10 :
             get_logger(__name__).log(logging.DEBUG,
             "above base")
-            self.rob.movel([pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.025)
+            self.rob.movel([pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.1)
         elif pick_loc [2] < 0.10 : 
             get_logger(__name__).log(logging.DEBUG,
             "lower then base")
-            self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.025)
+            self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.1)
         #self.rob.movel([pick_loc[1], self.post_pick[2], pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
         """while True: #TODO: add pressure sensor
@@ -243,9 +243,9 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre place")
         print("post_pick")
-        self.rob.movel(self.post_pick, acc=1, vel=0.025)
+        self.rob.movel(self.post_pick, acc=1, vel=0.1)
         print("pre_place")
-        self.rob.movels([self.post_via_pose,self.pre_place], acc=1, vel=0.05, radius=0.05)
+        self.rob.movels([self.post_via_pose,self.pre_place], acc=1, vel=0.2, radius=0.1)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre place")
         
@@ -278,11 +278,11 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyer")
         pos = self.place_pos
-        movement = round(crate_height - 0.18,3)
+        movement = round(crate_height - 0.17,3)
         print("Drop_down movement",movement)
         pos[2] += movement
         print(pos)
-        self.rob.movel(pos, acc=1, vel=0.025)
+        self.rob.movel(pos, acc=1, vel=0.05)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move on conveyer")
         
@@ -297,8 +297,8 @@ class RobotController():
             f"starting move place crate")
         movement = [0.004, 0 , -0.004, 0, -0.25, 0] #move around hooks
         movement = [x*1.25 for x in movement]
-        self.rob.movel_tool(movement, acc=1, vel=0.01)
-        self.rob.movel([0,0,0.2,0,0,0], acc=1, vel=0.025, relative=True)
+        self.rob.movel_tool(movement, acc=1, vel=0.05)
+        self.rob.movel([0,0,0.2,0,0,0], acc=1, vel=0.1, relative=True)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move place crate")
         

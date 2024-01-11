@@ -134,7 +134,7 @@ class VisionClient():
                 distances = []
                 for nx, ny in neighbours:
                     depth = depth_frame.get_distance(nx, ny)
-                    if depth != 0 and depth < 1.45:
+                    if depth != 0 and depth < 1.35:
                         distances.append(depth)
                 
                 if distances:

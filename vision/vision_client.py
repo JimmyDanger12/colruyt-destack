@@ -265,7 +265,7 @@ class VisionClient():
                 data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True) #TODO: move outside of vision function
                 for f in files:
-                    pass#os.remove(f)
+                    os.remove(f)
                 break
             return coords_3d
         except Exception as e:

@@ -126,8 +126,6 @@ class ClassificationModel():
             img_array = img_array[:,:,::-1]
             img_array = tf.image.resize(img_array,(256,256),method="bicubic")
             img_array = np.array(img_array,dtype=np.int32)
-            plt.imshow(img_array)
-            plt.show()
             img_array = tf.expand_dims(img_array, 0)
 
             predictions = self.model.predict(img_array)

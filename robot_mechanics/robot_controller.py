@@ -6,12 +6,12 @@ import logging
 import time
 import numpy
 
-DIG_OUT_CYL_BOT = 1
-DIG_OUT_CYL_SLI = 2
+DIG_OUT_CYL_BOT = 3
+DIG_OUT_CYL_SLI = 0
 DIG_IN_DROPOFF = 3
-ANA_IN_PRESSR = 4
-ANA_IN_PRESSL = 5
-ANA_OUT_CONV = 6
+#ANA_IN_PRESSR = 0
+#ANA_IN_PRESSL = 0
+DIG_OUT_CONV = 4
 
 class RobotController():
     """
@@ -29,8 +29,8 @@ class RobotController():
 
         self.pre_pick = [-0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
         self.post_pick = [-0.12111, -0.40713, 0.37773, 0.8309, -0.8033, 1.4556]
-        self.place_pos = [-0.70156, 0.40176, 0.01387, -0.0063, -1.5466, 0.0049] 
-        self.start_pos = [-1.0433, 0.40644, 0.4366, -0.0462, -1.4907, 0.00434]
+        self.place_pos = [-0.70156, 0.40176, 0.01387, 0.0, -1.6, 0.0] 
+        self.start_pos = [-1.0433, 0.40644, 0.4366, 0.0, -1.6, 0.0]
         self.pre_place = [-0.67659, 0.39188, 0.21248, 0.0134, -1.1911, 0.0044]
         self.via_pose = [-0.612, -0.305, 0.340, 0.55, -1.5, 0.56]
         self.post_via_pose = [-0.57545, -0.27388, 0.32781, 0.4016, -1.1016, 0.6319]
@@ -54,13 +54,11 @@ class RobotController():
         pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
         self.move_pre_pick_pos()
         self.move_pre_picked_pos(pick_loc, pick_ori)
-        self.move_picked_pos()
+        #self.move_picked_pos()
     
     def test_drop_off(self):
         self.rob.set_tcp(self.tcp_bar)
-        self.rob.movel(self.pre_place,
-                       acc=1,
-                       vel=0.05)
+        self.rob.movel(self.pre_place, acc=1, vel=0.05) 
         crate_height = 0.196
         #pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
         self.move_on_conv_pos(crate_height)
@@ -118,7 +116,7 @@ class RobotController():
         self.rob.set_tcp(self.tcp_bar) 
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp")
-        self.rob.movel(self.start_pos, acc=1, vel=0.1) 
+        self.rob.movel(self.start_pos, acc=1, vel=0.25) 
         get_logger(__name__).log(logging.DEBUG,
             f"Move start pos completed")
         
@@ -137,7 +135,7 @@ class RobotController():
         get_logger(__name__).log(logging.INFO,
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        pick_ori = [1.24, -1.2, 1.24]
+        pick_ori = [1.2, -1.2, 1.2]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_loc, pick_ori, crate_height
@@ -150,7 +148,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre pick pos")
-        self.rob.movels([self.via_pose, self.pre_pick], acc=1, vel=0.1, radius=0.05)
+        self.rob.movels([self.via_pose, self.pre_pick], acc=1, vel=0.25, radius=0.05)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre pick pos")
         
@@ -163,8 +161,8 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
-        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.025)
-        self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.01)
+        self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.1)
+        #self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.01)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre picked")
         
@@ -257,7 +255,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"retracting safety system")
-        self.rob.set_analog_out(ANA_OUT_CONV, 0)
+        self.rob.set_analog_out(DIG_OUT_CONV, 0)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, True)
         time.sleep(3)
         self.rob.set_digital_out(DIG_OUT_CYL_SLI, False)
@@ -306,7 +304,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"drop off comfirmed, turning on conveyer")
-        self.rob.set_analog_out(ANA_OUT_CONV, 1)
+        self.rob.set_digital_out(DIG_OUT_CONV, 1)
         get_logger(__name__).log(logging.DEBUG,
             f"turned conveyer on")
 

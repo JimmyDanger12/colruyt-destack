@@ -172,36 +172,24 @@ class VisionClient():
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
             #c1.text((x,y),f"{point_3d}")
 
-    def calculate_rotational_angles(self,plane_coordinates): #TODO: maybe modify
+    def calculate_rotational_angles(self,plane_coordinates):
         # Extracting the coordinates of the plane
         p1, p2, p3, p4 = plane_coordinates #(x,y,z)
+        base_angles = (1.2,-1.2,1.2)
 
-        # Calculate vectors along two edges of the plane
-        v1 = np.array(p2) - np.array(p1)
-        v2 = np.array(p3) - np.array(p1)
-
-        # Calculate the cross product to get the normal vector of the plane
-        normal_vector = np.cross(v1, v2)
-        # Normalize the normal vector
-        normal_vector /= np.linalg.norm(normal_vector)
-
-        # Calculate angles around x, y, and z axes (Euler angles)
-        x_angle = np.arctan2(normal_vector[2], normal_vector[1])
-        y_angle = np.arctan2(-normal_vector[0], np.sqrt(normal_vector[1]**2 + normal_vector[2]**2))
-        z_angle = np.arctan2(v2[0], v1[0])
-        """d12 = np.array(p2) - np.array(p1)
+        d12 = np.array(p2) - np.array(p1)
         d13 = np.array(p3) - np.array(p1)
         dz = np.cross(d12, d13)
 
         X = d12 / np.linalg.norm(d12)
         Z = dz / np.linalg.norm(dz)
-        Y = np.cross(Z, X)
+        Y = np.cross(X,Z)
 
         rot = np.column_stack((X,Y,Z))
-        x_angle, y_angle, z_angle = R.from_matrix(rot).as_rotvec(degrees=False) #TODO: maybe as_euler"""
+        angles = R.from_matrix(rot).as_rotvec(degrees=False)
+        corrected_angles = angles + base_angles
 
-
-        return x_angle, y_angle, z_angle
+        return corrected_angles
 
     def get_robot_coords(self, camera_coords):
         R = np.array([[0.98965,0.14059,-0.028841],
@@ -258,6 +246,14 @@ class VisionClient():
                         robot_coords.append(rob_coord)
             
                     x,y,z = self.get_robot_coords(rel_3d_points[4])
+                    
+                    def sort_robot_coords(coords):
+                        top_points = np.sort(coords[:2],axis=0)[::-1]
+                        bottom_points = np.sort(coords[2:],axis=0)[::-1]
+
+                        return np.concatenate((top_points,bottom_points),axis=0)
+                    
+                    robot_coords = sort_robot_coords(robot_coords)
                     rx,ry,rz = self.calculate_rotational_angles(robot_coords)
                     crate_height = self.get_crate_height(robot_coords)
                     coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
@@ -328,5 +324,7 @@ class VisionClient():
         approx_height_1 = calc_3d_distance(coords[0][:3],coords[2][:3])
         approx_height_2 = calc_3d_distance(coords[1][:3],coords[3][:3])
         approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
+
         actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
+        print("Act.Hgt:",actual_height,"Apr.Hgt:",round(approx_height,3),"Apr.Diff:",round(approx_height_1-approx_height_2,3))
         return actual_height

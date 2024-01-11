@@ -198,9 +198,9 @@ class RobotController():
             f"staring move out carrier")
         self.rob.movel([0, 0, 0.03, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
         if pick_loc[3] >= 0.01 :
-            self.rob.movel([pick_loc[1], -400, pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
+            self.rob.movel([pick_loc[1], -0.40, pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
         elif pick_loc [3] < 0.01 : 
-            self.rob.movel([pick_loc[1], -400, self.post_pick] + self.post_pick[3:6], acc=1, vel=0.025)
+            self.rob.movel([pick_loc[1], -0.40, self.post_pick] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([pick_loc[1], self.post_pick[2], pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
         """while True: #TODO: add pressure sensor
@@ -292,6 +292,7 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move place crate")
         movement = [0.004, 0 , -0.004, 0, -0.25, 0] #move around hooks
+        movement = [x*1.25 for x in movement]
         self.rob.movel_tool(movement, acc=1, vel=0.01)
         self.rob.movel([0,0,0.2,0,0,0], acc=1, vel=0.025, relative=True)
         get_logger(__name__).log(logging.DEBUG,

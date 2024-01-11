@@ -1,9 +1,9 @@
 Things still to fix:
+- Fix crate height
 - Pick-up accuracy testing (structured)-> Correct pick-up dynamically
 
 - Be able to pick up lowest row
 - Fix unpickable crate alert
-- Fix classification model (for spa/blue crates)
 
 (- Safety system integration)
 (- Sensor integration & conveyor)

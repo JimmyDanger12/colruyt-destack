@@ -87,14 +87,15 @@ class RobotController():
             self.move_out_carrier(pick_loc) 
             #self.depl_safety_syst()
             self.move_pre_place_pos() 
+            self.rob.set_digital_out(DIG_OUT_CONV, 0)
             #self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
-            """dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
+            dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
             if dropoff_value == True:
                 self.turn_conv_on()
             else: 
-                break #add alert"""
+                break #add alert
             get_logger(__name__).log(logging.INFO,
                                      "Crate placed successfully")
         if not alerted:
@@ -162,7 +163,7 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre picked")
         self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.1)
-        #self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.01)
+        self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.01)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre picked")
         
@@ -176,7 +177,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting picking")
-        self.rob.movel([0, 0, -0.0475, 0, 0, 0], acc=1, vel=0.01, relative=True)
+        self.rob.movel([0, 0, -0.035, 0, 0, 0], acc=1, vel=0.01, relative=True)
         movement = [-0.005, 0 , 0.005, 0, 0.35, 0] #move around hooks
         self.rob.movel_tool(movement, acc=1, vel=0.01)
         movement = [-0.01, 0, -0.05, 0, 0.35, 0] #move around plate
@@ -194,11 +195,15 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"staring move out carrier")
-        self.rob.movel([0, 0, 0.03, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
-        if pick_loc[3] >= 0.01 :
-            self.rob.movel([pick_loc[1], -0.40, pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
-        elif pick_loc [3] < 0.01 : 
-            self.rob.movel([pick_loc[1], -0.40, self.post_pick] + self.post_pick[3:6], acc=1, vel=0.025)
+        self.rob.movel([0, 0, 0.02, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
+        if pick_loc[2] >= 0.10 :
+            get_logger(__name__).log(logging.DEBUG,
+            "above base")
+            self.rob.movel([pick_loc[0], -0.5, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.025)
+        elif pick_loc [2] < 0.10 : 
+            get_logger(__name__).log(logging.DEBUG,
+            "lower then base")
+            self.rob.movel([pick_loc[0], -0.5, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([pick_loc[1], self.post_pick[2], pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
         #self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
         """while True: #TODO: add pressure sensor
@@ -255,7 +260,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"retracting safety system")
-        self.rob.set_analog_out(DIG_OUT_CONV, 0)
+        self.rob.set_digital_out(DIG_OUT_CONV, 0)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, True)
         time.sleep(3)
         self.rob.set_digital_out(DIG_OUT_CYL_SLI, False)
@@ -273,9 +278,10 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyer")
         pos = self.place_pos
-        movement = crate_height - 0.185
+        movement = round(crate_height - 0.18,3)
         print("Drop_down movement",movement)
         pos[2] += movement
+        print(pos)
         self.rob.movel(pos, acc=1, vel=0.025)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move on conveyer")

@@ -130,11 +130,11 @@ class VisionClient():
         for x_2d,y_2d in rel_2d_points:
             depth = depth_frame.get_distance(x_2d,y_2d)
             if depth == 0:
-                neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),2)
+                neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),1)
                 distances = []
                 for nx, ny in neighbours:
                     depth = depth_frame.get_distance(nx, ny)
-                    if depth != 0 and depth < 1.3:
+                    if depth != 0 and depth < 1.45:
                         distances.append(depth)
                 
                 if distances:

@@ -95,12 +95,16 @@ class RobotController():
             if dropoff_value == True:
                 self.turn_conv_on()
             else: 
-                break #add alert
+                get_logger(__name__).log(logging.INFO,
+                    f"drop off not comfirmed, alerting worker")
+                alerted = True
+                self.alert_worker()
+                break
             get_logger(__name__).log(logging.INFO,
-                                     "Crate placed successfully")
+                "Crate placed successfully")
         if not alerted:
             get_logger(__name__).log(logging.INFO,
-                                    "Done/No Boxes detected")
+                "Done/No Boxes detected")
             self._change_status(Status.Done)
     
     def alert_worker(self):
@@ -204,12 +208,14 @@ class RobotController():
             get_logger(__name__).log(logging.DEBUG,
             "lower then base")
             self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.1)
-        #self.rob.movel([pick_loc[1], self.post_pick[2], pick_loc[3]] + self.post_pick[3:6], acc=1, vel=0.025)
-        #self.rob.movel([0, 0.40, 0, 0, 0, 0], acc=0.5, vel=0.025, relative=True)
         """while True: #TODO: add pressure sensor
             pressure_value = self.rob.get_analog_in(ANA_IN_PRESSR) + self.rob.get_analog_in(ANA_IN_PRESSL)
             if pressure_value < 800:
-                self.stop()
+                get_logger(__name__).log(logging.INFO,
+                    f"Pressure loss, alerting worker")
+                alerted = True
+                self.alert_worker()
+                TODO: self.stop()
             if self.rob.get_pose() == [] :
                 break"""
         get_logger(__name__).log(logging.DEBUG,

@@ -5,12 +5,17 @@ from backend_logging import get_logger
 import logging
 import time
 import numpy
+import pyfirmata2 as pyfirmata
+
+board = pyfirmata.Arduino('COM3')
+it = pyfirmata.util.Iterator(board)
+it.start()
 
 DIG_OUT_CYL_BOT = 3
 DIG_OUT_CYL_SLI = 1
 DIG_IN_DROPOFF = 3
-#ANA_IN_PRESSR = 0
-#ANA_IN_PRESSL = 0
+ANA_IN_PRESSR = board.get_pin('a:0:i')
+ANA_IN_PRESSL = board.get_pin('a:1:i')
 DIG_OUT_CONV = 4
 
 class RobotController():
@@ -85,10 +90,10 @@ class RobotController():
             self.move_pre_picked_pos(pick_loc, pick_ori) 
             self.move_picked_pos() 
             self.move_out_carrier(pick_loc) 
-            self.depl_safety_syst()
+            #self.depl_safety_syst()
             self.move_pre_place_pos() 
-            #self.rob.set_digital_out(DIG_OUT_CONV, 0)
-            self.retr_safety_syst()
+            self.rob.set_digital_out(DIG_OUT_CONV, 0)
+            #self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -193,31 +198,45 @@ class RobotController():
 
     def move_out_carrier(self, pick_loc):
         """
-        This function contains the movements:
+        This function contains:
+        - checking with the pressure sensors if the crate has been picked
         - move the crate up 
         - move the crate back out of the carrier
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"staring move out carrier")
-        self.rob.movel([0, 0, 0.01, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
-        if pick_loc[2] >= 0.10 :
-            get_logger(__name__).log(logging.DEBUG,
-            "above base")
-            self.rob.movel([pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.1)
-        elif pick_loc [2] < 0.10 : 
-            get_logger(__name__).log(logging.DEBUG,
-            "lower then base")
-            self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.1)
-        """while True: #TODO: add pressure sensor
-            pressure_value = self.rob.get_analog_in(ANA_IN_PRESSR) + self.rob.get_analog_in(ANA_IN_PRESSL)
-            if pressure_value < 800:
+
+
+
+
+
+        
+        check_pressure = True
+        while check_pressure == True : 
+            pressure_value = ANA_IN_PRESSR.read() #+ ANA_IN_PRESSL.read()
+            print('pressure:' + str(pressure_value))
+            #print('sensor 1:' + str(analog_value1))
+            #print('sensor 2:' + str(analog_value2))
+            #print(' ')
+            #time.sleep(1)
+            if pressure_value < 0.900:
                 get_logger(__name__).log(logging.INFO,
                     f"Pressure loss, alerting worker")
                 alerted = True
                 self.alert_worker()
-                TODO: self.stop()
-            if self.rob.get_pose() == [] :
-                break"""
+                self.stop() #TODO
+            else:
+                get_logger(__name__).log(logging.DEBUG,
+                    f"starting move out carrier")
+                self.rob.movel([0, 0, 0.01, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
+                if pick_loc[2] >= 0.10 :
+                    get_logger(__name__).log(logging.DEBUG,
+                    "above base")
+                    self.rob.movel([pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.1)
+                    check_pressure = False
+                elif pick_loc [2] < 0.10 : 
+                    get_logger(__name__).log(logging.DEBUG,
+                    "lower then base")
+                    self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.1)
+                    check_pressure = False 
         get_logger(__name__).log(logging.DEBUG,
             f"completed move out carrier")
 
@@ -285,7 +304,6 @@ class RobotController():
         movement = round(crate_height - 0.17,3)
         pos[2] += movement
         print("Move up from conv",movement, "Crate Height:",crate_height, "New Pos:", pos)
-        
         self.rob.movel(pos, acc=1, vel=0.05)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move on conveyor")

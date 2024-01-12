@@ -129,8 +129,8 @@ class VisionClient():
         rel_3d_points = []
         for x_2d,y_2d in rel_2d_points:
             depth = depth_frame.get_distance(x_2d,y_2d)
-            if depth == 0:
-                neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),1)
+            if depth == 0 or depth > 1.35:
+                neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),2)
                 distances = []
                 for nx, ny in neighbours:
                     depth = depth_frame.get_distance(nx, ny)
@@ -308,9 +308,24 @@ class VisionClient():
                 raise NoPickUpCrateException("Highest Crate is NoPickupCrate")
             else:
                 coords = list(highest_entry["coords"])
-                coords[0] += 0.02
-                coords[1] += 0.0425
-                coords[2] += -0.135
+                def apply_vision_offset(coords):
+                    def apply_z_offset(coords):
+                        # Ensure that the input value is within the specified range
+                        in_max = 0.3
+                        in_min = -0.275
+                        out_max = 0.075
+                        out_min = -0.075
+                        value = max(min(coords[0], in_max), in_min)
+                        # Perform the linear interpolation
+                        z_offset = (value - in_min) / (in_max - in_min) * (out_max - out_min) + out_min
+                        return z_offset
+                        
+                    coords[0] += 0.03
+                    coords[1] += 0.0475
+                    coords[2] += -0.135 + apply_z_offset(coords)
+                    return coords
+
+                coords = apply_vision_offset(coords)
                 return coords,highest_entry["height"]
         else:
             raise NoDetectedCratesException()

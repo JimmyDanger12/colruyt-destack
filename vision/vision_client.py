@@ -130,12 +130,12 @@ class VisionClient():
         temp_2d_points = []
         for x_2d,y_2d in rel_2d_points:
             depth = depth_frame.get_distance(x_2d,y_2d)
-            if depth == 0 or depth > 1.35:
+            if depth == 0 or depth > 1.4:
                 neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),2)
                 distances = []
                 for nx, ny in neighbours:
                     depth = depth_frame.get_distance(nx, ny)
-                    if depth != 0 and depth < 1.35:
+                    if depth != 0 and depth < 1.4:
                         distances.append(depth)
                 
                 if distances:
@@ -178,7 +178,7 @@ class VisionClient():
             x,y = tuple(point_2d.flatten())
             r=5
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
-            #c1.text((x,y),f"{point_3d}")
+            c1.text((x,y),f"{point_3d}")
 
     def calculate_rotational_angles(self,plane_coordinates):
         # Extracting the coordinates of the plane
@@ -226,7 +226,7 @@ class VisionClient():
                 classes, conf_list = self.cm.predict(self.path+"/crops/Crate/")
                 get_logger(__name__).log(logging.DEBUG,
                                          f"Received predictions from models")
-                data_image = Image.open(self.path+"/image0.jpg") #seg prediction results
+                data_image = Image.open("vision/input_color.jpg")#self.path+"/image0.jpg") #seg prediction results
                 color_draw = ImageDraw.Draw(data_image)
                 depth_image = np.asanyarray(depth_frame.get_data())
                 min_depth = 850
@@ -327,7 +327,7 @@ class VisionClient():
                         print("Z_offset",z_offset)
                         return z_offset
                         
-                    coords[0] += 0.03
+                    coords[0] += 0.025
                     coords[1] += 0.035
                     coords[2] += apply_z_offset(coords) - 0.12
                     return coords

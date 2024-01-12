@@ -7,7 +7,7 @@ import time
 import numpy
 import pyfirmata2 as pyfirmata
 
-board = pyfirmata.Arduino('COM3')
+board = pyfirmata.Arduino('COM8')
 it = pyfirmata.util.Iterator(board)
 it.start()
 
@@ -89,7 +89,10 @@ class RobotController():
             self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
             self.move_picked_pos() 
-            self.move_out_carrier(pick_loc) 
+            try:
+                self.move_out_carrier(pick_loc) 
+            except Exception as e:
+                break
             #self.depl_safety_syst()
             self.move_pre_place_pos() 
             self.rob.set_digital_out(DIG_OUT_CONV, 0)
@@ -145,7 +148,8 @@ class RobotController():
         get_logger(__name__).log(logging.INFO,
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        pick_ori = [1.2, -1.2, 1.2]
+        pick_ori = pick_coords[3:]
+        #pick_ori = [1.2, -1.2, 1.2]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_loc, pick_ori, crate_height
@@ -203,42 +207,48 @@ class RobotController():
         - move the crate up 
         - move the crate back out of the carrier
         """
-
-
-
-
-
-        
-        check_pressure = True
-        while check_pressure == True : 
-            pressure_value = ANA_IN_PRESSR.read() #+ ANA_IN_PRESSL.read()
-            print('pressure:' + str(pressure_value))
-            #print('sensor 1:' + str(analog_value1))
-            #print('sensor 2:' + str(analog_value2))
-            #print(' ')
-            #time.sleep(1)
-            if pressure_value < 0.900:
-                get_logger(__name__).log(logging.INFO,
-                    f"Pressure loss, alerting worker")
-                alerted = True
-                self.alert_worker()
-                self.stop() #TODO
-            else:
-                get_logger(__name__).log(logging.DEBUG,
-                    f"starting move out carrier")
-                self.rob.movel([0, 0, 0.01, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
-                if pick_loc[2] >= 0.10 :
-                    get_logger(__name__).log(logging.DEBUG,
-                    "above base")
-                    self.rob.movel([pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6], acc=1, vel=0.1)
-                    check_pressure = False
-                elif pick_loc [2] < 0.10 : 
-                    get_logger(__name__).log(logging.DEBUG,
-                    "lower then base")
-                    self.rob.movel([pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6], acc=1, vel=0.1)
-                    check_pressure = False 
         get_logger(__name__).log(logging.DEBUG,
-            f"completed move out carrier")
+                    f"starting move out carrier")
+        self.rob.movel([0, 0, 0.01, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
+        goal_pos = []
+        if pick_loc[2] >= 0.10 :
+            get_logger(__name__).log(logging.DEBUG,
+            "above base")
+            goal_pos = [pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6]
+            self.rob.movel(goal_pos, acc=1, vel=0.1, wait=False)
+        elif pick_loc [2] < 0.10 : 
+            get_logger(__name__).log(logging.DEBUG,
+            "lower then base")
+            goal_pos = [pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6]
+            self.rob.movel(goal_pos, acc=1, vel=0.1, wait=False)
+
+        def are_coords_within_tolerance(current_pos,goal_pos, tolerance):
+            return all(
+                abs(coord - goal_coord) <= tolerance for coord, goal_coord in zip(current_pos,goal_pos))
+        
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Starting reading pressure")
+        alerted=False
+        while True:
+            pressure_value = ANA_IN_PRESSR.read()
+            if pressure_value < 0.900:
+                get_logger(__name__).log(logging.WARNING,
+                    f"Pressure loss, alerting worker")
+                alerted=True
+                self.stop()
+                self.alert_worker()
+                break
+            current_pos = self.rob.getl(wait=True)
+
+            if are_coords_within_tolerance(current_pos[:3],goal_pos[:3], 0.01):
+                break
+        get_logger(__name__).log(logging.DEBUG,
+                                 f"Stopped reading pressure")
+        if alerted:
+            raise Exception("Pressure lost")
+        else:
+            get_logger(__name__).log(logging.DEBUG,
+                f"completed move out carrier")
 
 
     def depl_safety_syst(self):
@@ -336,13 +346,15 @@ class RobotController():
         get_logger(__name__).log(logging.DEBUG,
             f"turned conveyer on")
 
-    def stop(self,priority):
+    def stop(self):
         """
         Hard stop robot
         -> Status Stopped -> priority 1 = high, 2 = low
         """
+        self.rob.stop()
         self._change_status(Status.Stopped)
-        #TODO: Add function to stop robot
+        get_logger(__name__).log(logging.WARNING,
+                                 "Stopped robot")
 
     def destack_done(self):
         """

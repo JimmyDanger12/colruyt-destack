@@ -1,5 +1,6 @@
 Things still to fix:
 - Test orientation accuracy
+- Add Vision Display
 - Pick-up accuracy testing (structured)-> Correct pick-up dynamically
 
 - Fix unpickable crate alert - test

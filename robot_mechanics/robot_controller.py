@@ -7,7 +7,7 @@ import time
 import numpy
 
 DIG_OUT_CYL_BOT = 3
-DIG_OUT_CYL_SLI = 0
+DIG_OUT_CYL_SLI = 1
 DIG_IN_DROPOFF = 3
 #ANA_IN_PRESSR = 0
 #ANA_IN_PRESSL = 0
@@ -85,10 +85,10 @@ class RobotController():
             self.move_pre_picked_pos(pick_loc, pick_ori) 
             self.move_picked_pos() 
             self.move_out_carrier(pick_loc) 
-            #self.depl_safety_syst()
+            self.depl_safety_syst()
             self.move_pre_place_pos() 
-            self.rob.set_digital_out(DIG_OUT_CONV, 0)
-            #self.retr_safety_syst()
+            #self.rob.set_digital_out(DIG_OUT_CONV, 0)
+            self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -248,9 +248,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move to pre place")
-        print("post_pick")
         self.rob.movel(self.post_pick, acc=1, vel=0.1)
-        print("pre_place")
         self.rob.movels([self.post_via_pose,self.pre_place], acc=1, vel=0.2, radius=0.1)
         get_logger(__name__).log(logging.DEBUG,
             f"completed move to pre place")
@@ -279,18 +277,18 @@ class RobotController():
     def move_on_conv_pos(self, crate_height):
         """
         This function contains the movements:
-        - move crate on conveyer
+        - move crate on conveyor
         """
         get_logger(__name__).log(logging.DEBUG,
-            f"starting move on conveyer")
+            f"starting move on conveyor")
         pos = self.place_pos
         movement = round(crate_height - 0.17,3)
-        print("Drop_down movement",movement)
         pos[2] += movement
-        print(pos)
+        print("Move up from conv",movement, "Crate Height:",crate_height, "New Pos:", pos)
+        
         self.rob.movel(pos, acc=1, vel=0.05)
         get_logger(__name__).log(logging.DEBUG,
-            f"completed move on conveyer")
+            f"completed move on conveyor")
         
 
     def move_place_crate(self):

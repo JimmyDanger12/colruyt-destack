@@ -127,6 +127,7 @@ class VisionClient():
 
     def get_camera_3d_points(self,depth_frame, rel_2d_points, color_intrin, limits):
         rel_3d_points = []
+        temp_2d_points = []
         for x_2d,y_2d in rel_2d_points:
             depth = depth_frame.get_distance(x_2d,y_2d)
             if depth == 0 or depth > 1.35:
@@ -140,10 +141,15 @@ class VisionClient():
                 if distances:
                     depth = np.median(distances)
                 else:
-                    depth = 0
+                    depth = np.nan
                     get_logger(__name__).log(logging.WARNING,
                                              "No depth discovered")
-
+            temp_2d_points.append([x_2d,y_2d,depth])
+        
+        temp_2d_points = np.array(temp_2d_points)
+        for x_2d, y_2d, depth in temp_2d_points:
+            if np.isnan(depth):
+                depth = np.nanmean(temp_2d_points[:,2])
             #right: x, down: y, forward: z
             result = rs.rs2_deproject_pixel_to_point(color_intrin, [x_2d, y_2d], depth)
             """
@@ -260,7 +266,7 @@ class VisionClient():
                     coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
                     point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
                     get_logger(__name__).log(logging.DEBUG,
-                                             f"Calculated pickup point: {point}, crate_height: {point}")
+                                             f"Calculated pickup point: {point}, crate_height: {crate_height}")
                     color_draw.text(rel_2d_points[4], f"{cls,point},{crate_height}", fill=(255,255,255))
                     
                 data_image.save("vision/distance_annot.jpg")
@@ -313,16 +319,17 @@ class VisionClient():
                         # Ensure that the input value is within the specified range
                         in_max = 0.3
                         in_min = -0.275
-                        out_max = 0.075
-                        out_min = -0.075
+                        out_max = 0.0075
+                        out_min = -0.0075
                         value = max(min(coords[0], in_max), in_min)
                         # Perform the linear interpolation
                         z_offset = (value - in_min) / (in_max - in_min) * (out_max - out_min) + out_min
+                        print("Z_offset",z_offset)
                         return z_offset
                         
                     coords[0] += 0.03
-                    coords[1] += 0.0475
-                    coords[2] += -0.135 + apply_z_offset(coords)
+                    coords[1] += 0.035
+                    coords[2] += apply_z_offset(coords) - 0.12
                     return coords
 
                 coords = apply_vision_offset(coords)

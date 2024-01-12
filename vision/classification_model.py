@@ -132,7 +132,6 @@ class ClassificationModel():
             predicted_class_idx = np.argmax(predictions[0])
             class_name = self.class_names[predicted_class_idx]
             conf = np.max(predictions[0])
-            print(file,class_name,conf)
             labels.append(class_name)
             conf_list.append(conf)
 

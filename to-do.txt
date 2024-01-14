@@ -1,11 +1,8 @@
 Things still to fix:
 - Test orientation accuracy
+ - Add angles for all orientations (Rx+-, Ry+-, Rz+-)
 - Add Vision Display
-- Pick-up accuracy testing (structured)-> Correct pick-up dynamically
 
 - Fix unpickable crate alert - test
 
 (- Safety system integration)
-(- Sensor integration)
-
-(- Be able to pick up lowest row)

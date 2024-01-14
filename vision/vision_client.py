@@ -180,24 +180,58 @@ class VisionClient():
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
             c1.text((x,y),f"{point_3d}")
 
-    def calculate_rotational_angles(self,plane_coordinates):
-        # Extracting the coordinates of the plane
-        p1, p2, p3, p4 = plane_coordinates #(x,y,z)
-        base_angles = (1.2,-1.2,1.2)
+    def calculate_rotational_angles(coords):
+        def get_normal_vector(coords):
+            p1, p2, p3 = coords
+            d12 = np.array(p2) - np.array(p1)
+            d13 = np.array(p3) - np.array(p1)
+            normal_vec = np.cross(d12, d13)
+            return normal_vec
+        
+        def find_rotation_between_planes(normal_vector1, normal_vector2):
+            # Normalize the normal vectors
+            normal_vector1 = normal_vector1 / np.linalg.norm(normal_vector1)
+            normal_vector2 = normal_vector2 / np.linalg.norm(normal_vector2)
 
-        d12 = np.array(p2) - np.array(p1)
-        d13 = np.array(p3) - np.array(p1)
-        dz = np.cross(d12, d13)
+            # Calculate the rotation axis
+            rotation_axis = np.cross(normal_vector1, normal_vector2)
 
-        X = d12 / np.linalg.norm(d12)
-        Z = dz / np.linalg.norm(dz)
-        Y = np.cross(X,Z)
+            # Calculate the rotation angle
+            dot_product = np.dot(normal_vector1, normal_vector2)
+            rotation_angle = np.arccos(dot_product)
 
-        rot = np.column_stack((X,Y,Z))
-        angles = R.from_matrix(rot).as_rotvec(degrees=False)
-        corrected_angles = angles + base_angles
+            # Create a rotation matrix or quaternion
+            rotation_matrix = rotation_matrix_from_axis_angle(rotation_axis, rotation_angle)
+            
+            return rotation_matrix
 
-        return corrected_angles
+        def rotation_matrix_from_axis_angle(axis, angle):
+            # Normalize the axis
+            axis = axis / np.linalg.norm(axis)
+
+            # Calculate the rotation matrix
+            rotation_matrix = np.array([
+                [np.cos(angle) + axis[0]**2 * (1 - np.cos(angle)), axis[0] * axis[1] * (1 - np.cos(angle)) - axis[2] * np.sin(angle), axis[0] * axis[2] * (1 - np.cos(angle)) + axis[1] * np.sin(angle)],
+                [axis[1] * axis[0] * (1 - np.cos(angle)) + axis[2] * np.sin(angle), np.cos(angle) + axis[1]**2 * (1 - np.cos(angle)), axis[1] * axis[2] * (1 - np.cos(angle)) - axis[0] * np.sin(angle)],
+                [axis[2] * axis[0] * (1 - np.cos(angle)) - axis[1] * np.sin(angle), axis[2] * axis[1] * (1 - np.cos(angle)) + axis[0] * np.sin(angle), np.cos(angle) + axis[2]**2 * (1 - np.cos(angle))]
+            ])
+
+            return rotation_matrix
+
+
+        base_angles = np.array([1.209,-1.209,1.209])
+        p1 = coords[0]
+        p2 = [p1[0], p1[1], p1[2]+1]
+        p3 = [p1[0]+1, p1[1], p1[2]]
+        init_coords = np.array([p1, p2, p3])
+
+        norm_init = get_normal_vector(init_coords)
+        norm_final = get_normal_vector(coords[:3])
+
+        rotation_matrix = find_rotation_between_planes(norm_init, norm_final)
+        calc_angles = R.from_matrix(rotation_matrix).as_rotvec(degrees=False)
+        Rx,Ry,Rz = base_angles + calc_angles
+        return Rx,Ry,Rz
 
     def get_robot_coords(self, camera_coords):
         R = np.array([[0.98965,0.14059,-0.028841],
@@ -248,26 +282,27 @@ class VisionClient():
                     success, rot, trans = cv2.solvePnP(np.array(rel_3d_points).astype("float32"),np.array(rel_2d_points).astype("float32"),self.k,self.d)
                     self.show_3d_points(rel_3d_points[:4],rot, trans, self.k, self.d, color_draw)
 
-                    robot_coords = []
-                    for coord in rel_3d_points[:4]:
-                        rob_coord = self.get_robot_coords(coord)
-                        robot_coords.append(rob_coord)
-            
-                    x,y,z = self.get_robot_coords(rel_3d_points[4])
-                    rx,ry,rz = self.calculate_rotational_angles(robot_coords)
-                    
                     def sort_robot_coords(coords):
                         top_points = np.sort(coords[:2],axis=0)[::-1]
                         bottom_points = np.sort(coords[2:],axis=0)[::-1]
                         return np.concatenate((top_points,bottom_points),axis=0)
-                    robot_coords = sort_robot_coords(robot_coords)
                     
+                    robot_coords = []
+                    for coord in rel_3d_points[:4]:
+                        rob_coord = self.get_robot_coords(coord)
+                        robot_coords.append(rob_coord)
+                    robot_coords = sort_robot_coords(robot_coords)
                     crate_height = self.get_crate_height(robot_coords)
-                    coords_3d.append({"coords":(x,y,z,rx,ry,rz),"class":cls,"height":crate_height})
-                    point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
+
+                    x,y,z = self.get_robot_coords(rel_3d_points[4])
+                    rx,ry,rz = self.calculate_rotational_angles(robot_coords)
+                    pickup_point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
+                    coords_3d.append({"coords":pickup_point,"class":cls,"height":crate_height})
+
+                   
                     get_logger(__name__).log(logging.DEBUG,
-                                             f"Calculated pickup point: {point}, crate_height: {crate_height}")
-                    color_draw.text(rel_2d_points[4], f"{cls,point},{crate_height}", fill=(255,255,255))
+                                             f"Calculated pickup point: {pickup_point}, crate_height: {crate_height}")
+                    color_draw.text(rel_2d_points[4], f"{cls,pickup_point},{crate_height}", fill=(255,255,255), direction="ttb")
                     
                 data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True)

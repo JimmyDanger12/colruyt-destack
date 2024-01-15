@@ -11,7 +11,7 @@ LEARNING_RATE = "learning_rate"
 PATIENCE = "patience"
 PATH = "path"
 
-BEST_MODEL_PATH = "vision/runs/segment/train8/weights/best.pt"
+BEST_MODEL_PATH = "vision/runs/segment/train/weights/best.pt"
 
 class SegmentationModel():
     def __init__(self):
@@ -69,7 +69,7 @@ class SegmentationModel():
 
 
 params = {
-    PATH: "vision/data/only_lab_total",
+    PATH: "vision/data/only_lab_total_2",
     IMG_SIZE: 640,
     OPTIMIZER: "AdamW",
     LEARNING_RATE: 0.0012,
@@ -81,15 +81,15 @@ params = {
 if __name__ == "__main__":
     b = SegmentationModel()
 
-    b.load_model()
+    #b.load_model()
     print("model loaded")
 
-    #results = b.train(params)
+    results = b.train(params)
     print("model trained")
 
-    #metrics = b.test()
+    metrics = b.test()
     print("model evaluated")
 
-    test_image = "vision/data/only_lab_total/test/images"
+    test_image = "vision/data/only_lab_total_2/test/images"
     results = b.predict(test_image, False, False, True)
     print("model tested")

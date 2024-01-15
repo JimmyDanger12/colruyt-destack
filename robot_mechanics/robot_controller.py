@@ -13,9 +13,9 @@ it.start()
 
 DIG_OUT_CYL_BOT = 3
 DIG_OUT_ACT_SLI_EXT = board.digital[7]
-DIG_OUT_ACT_SLI_RETC = board.digital[8]
+DIG_OUT_ACT_SLI_RETR = board.digital[8]
 DIG_OUT_ACT_SLI_EXT.write(0) 
-DIG_OUT_ACT_SLI_RETC.write(0)
+DIG_OUT_ACT_SLI_RETR.write(0)
 DIG_IN_DROPOFF = 3
 ANA_IN_PRESSR = board.get_pin('a:0:i')
 ANA_IN_PRESSL = board.get_pin('a:1:i')
@@ -292,9 +292,9 @@ class RobotController():
             f"retracting safety system")
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 0)
         time.sleep(1)
-        DIG_OUT_ACT_SLI_RETC.write(1) 
+        DIG_OUT_ACT_SLI_RETR.write(1) 
         time.sleep(3.5) 
-        DIG_OUT_ACT_SLI_RETC.write(0)
+        DIG_OUT_ACT_SLI_RETR.write(0)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
         get_logger(__name__).log(logging.DEBUG,
             f"retracted safety system")

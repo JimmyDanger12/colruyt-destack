@@ -7,7 +7,7 @@ import time
 import numpy
 import pyfirmata2 as pyfirmata
 
-board = pyfirmata.Arduino('COM8')
+board = pyfirmata.Arduino('COM3')
 it = pyfirmata.util.Iterator(board)
 it.start()
 
@@ -65,12 +65,9 @@ class RobotController():
         #self.move_picked_pos()
     
     def test_drop_off(self):
-        self.rob.set_tcp(self.tcp_bar)
-        self.rob.movel(self.pre_place, acc=1, vel=0.05) 
-        crate_height = 0.196
-        #pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
-        self.move_on_conv_pos(crate_height)
-        self.move_place_crate()
+        self.depl_safety_syst()
+        time.sleep(5)
+        self.retr_safety_syst()
     
     def start_destack(self):
         alerted = False
@@ -96,9 +93,9 @@ class RobotController():
                 self.move_out_carrier(pick_loc) 
             except Exception as e:
                 break
-            #self.depl_safety_syst()
+            self.depl_safety_syst()
             self.move_pre_place_pos()
-            #self.retr_safety_syst()
+            self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -148,7 +145,7 @@ class RobotController():
         get_logger(__name__).log(logging.INFO,
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        pick_ori = pick_coords[3:6]
+        #pick_ori = pick_coords[3:6]
         pick_ori = [1.2, -1.2, 1.2]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
@@ -259,12 +256,12 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"deploying safety system")
-        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
-        time.sleep(3)
+        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 0)
+        time.sleep(1)
         DIG_OUT_ACT_SLI_EXT.write(1) 
         time.sleep(3.5) 
         DIG_OUT_ACT_SLI_EXT.write(0)
-        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 0)
+        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
         get_logger(__name__).log(logging.DEBUG,
             f"deployed safety system")
         
@@ -293,12 +290,12 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"retracting safety system")
-        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
-        time.sleep(3)
+        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 0)
+        time.sleep(1)
         DIG_OUT_ACT_SLI_RETC.write(1) 
         time.sleep(3.5) 
         DIG_OUT_ACT_SLI_RETC.write(0)
-        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 0)
+        self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
         get_logger(__name__).log(logging.DEBUG,
             f"retracted safety system")
         

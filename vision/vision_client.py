@@ -12,6 +12,7 @@ import logging
 import pandas as pd
 from keras.backend import clear_session
 from scipy.spatial.transform import Rotation as R
+import warnings
 from vision.classification_model import ClassificationModel
 from vision.segmentation_model import SegmentationModel
 
@@ -148,7 +149,11 @@ class VisionClient():
         temp_2d_points = np.array(temp_2d_points)
         for x_2d, y_2d, depth in temp_2d_points:
             if np.isnan(depth):
-                depth = np.nanmean(temp_2d_points[:,2])
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=RuntimeWarning)
+                    depth = np.nanmean(temp_2d_points[:,2])
+                    if depth == np.nan:
+                        break
             #right: x, down: y, forward: z
             result = rs.rs2_deproject_pixel_to_point(color_intrin, [x_2d, y_2d], depth)
             """
@@ -280,6 +285,8 @@ class VisionClient():
                         continue
                     self.coords_2d.append(rel_2d_points)
                     rel_3d_points = self.get_camera_3d_points(depth_frame, rel_2d_points, self.color_intrin,self.data_image.size)
+                    if not rel_3d_points:
+                        continue
                     success, rot, trans = cv2.solvePnP(np.array(rel_3d_points).astype("float32"),np.array(rel_2d_points).astype("float32"),self.k,self.d)
                     self.show_3d_points(rel_3d_points[:4],rot, trans, self.k, self.d, self.color_draw)
 

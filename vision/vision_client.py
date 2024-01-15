@@ -70,33 +70,13 @@ class VisionClient():
 
     def get_frames(self, pipeline, align, filters):
         # Wait for a coherent pair of frames: depth and color
-        depth_frames = []
-        color_frames = []
-        for x in range(10):
-            frameset = pipeline.wait_for_frames()
-            frameset = align.process(frameset)
-            depth_frames.append(frameset.get_depth_frame())
-            color_frames.append(frameset.get_color_frame())
-        
-        depth_to_disparity = rs.disparity_transform(True)
-        disparity_to_depth = rs.disparity_transform(False)
-        for frame in depth_frames:
-            frame = depth_to_disparity.process(frame)
-            for filter in filters:
-                frame = filter.process(frame)
-            frame = disparity_to_depth.process(frame)
-        
-        color_frame = color_frames[-1]
-        depth_frame = frame.as_depth_frame()
-        
-        #old part
-        """frames = pipeline.wait_for_frames()
+        frames = pipeline.wait_for_frames()
         aligned_frames = align.process(frames)
         depth_frame = aligned_frames.get_depth_frame()
         for filter in filters:
             depth_frame = filter.process(depth_frame)
         depth_frame = depth_frame.as_depth_frame()
-        color_frame = aligned_frames.get_color_frame()"""
+        color_frame = aligned_frames.get_color_frame()
 
         self.color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
         self.k = np.array(((self.color_intrin.fx, 0, self.color_intrin.ppx),

@@ -227,14 +227,14 @@ class RobotController():
             f"Starting reading pressure")
         alerted=False
         while True:
-            pressure_value = ANA_IN_PRESSR.read()
+            """pressure_value = ANA_IN_PRESSR.read()
             if pressure_value < 0.900:
                 get_logger(__name__).log(logging.WARNING,
                     f"Pressure loss, alerting worker")
                 alerted=True
                 self.stop()
                 self.alert_worker()
-                break
+                break"""
             current_pos = self.rob.getl(wait=True)
             if are_coords_within_tolerance(current_pos[:3],goal_pos[:3], 0.01):
                 break

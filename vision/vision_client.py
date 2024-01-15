@@ -70,13 +70,33 @@ class VisionClient():
 
     def get_frames(self, pipeline, align, filters):
         # Wait for a coherent pair of frames: depth and color
-        frames = pipeline.wait_for_frames()
+        depth_frames = []
+        color_frames = []
+        for x in range(10):
+            frameset = pipeline.wait_for_frames()
+            frameset = align.process(frameset)
+            depth_frames.append(frameset.get_depth_frame())
+            color_frames.append(frameset.get_color_frame())
+        
+        depth_to_disparity = rs.disparity_transform(True)
+        disparity_to_depth = rs.disparity_transform(False)
+        for frame in depth_frames:
+            frame = depth_to_disparity.process(frame)
+            for filter in filters:
+                frame = filter.process(frame)
+            frame = disparity_to_depth.process(frame)
+        
+        color_frame = color_frames[-1]
+        depth_frame = frame.as_depth_frame()
+        
+        #old part
+        """frames = pipeline.wait_for_frames()
         aligned_frames = align.process(frames)
         depth_frame = aligned_frames.get_depth_frame()
         for filter in filters:
             depth_frame = filter.process(depth_frame)
         depth_frame = depth_frame.as_depth_frame()
-        color_frame = aligned_frames.get_color_frame()
+        color_frame = aligned_frames.get_color_frame()"""
 
         self.color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
         self.k = np.array(((self.color_intrin.fx, 0, self.color_intrin.ppx),
@@ -107,7 +127,6 @@ class VisionClient():
         sorted_box = box[np.argsort(box[:, 0])]
         top_points = [tuple(sorted_box[0]),tuple(sorted_box[1])]
         c1.polygon(box,outline=(0,255,0),width=5)
-        c1.line(top_points,fill=(255,255,0),width=5)
 
         top_x, top_y = np.mean(top_points, axis=0).astype(int)
         center_x, center_y = np.mean(box,axis=0).astype(int)
@@ -180,7 +199,7 @@ class VisionClient():
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
             c1.text((x,y),f"{point_3d}")
 
-    def calculate_rotational_angles(coords):
+    def calculate_rotational_angles(self, coords):
         def get_normal_vector(coords):
             p1, p2, p3 = coords
             d12 = np.array(p2) - np.array(p1)
@@ -220,17 +239,18 @@ class VisionClient():
 
 
         base_angles = np.array([1.209,-1.209,1.209])
-        p1 = coords[0]
+        p1 = coords[1]
         p2 = [p1[0], p1[1], p1[2]+1]
         p3 = [p1[0]+1, p1[1], p1[2]]
         init_coords = np.array([p1, p2, p3])
 
         norm_init = get_normal_vector(init_coords)
-        norm_final = get_normal_vector(coords[:3])
+        norm_final = get_normal_vector([coords[1],coords[2],coords[3]])
 
         rotation_matrix = find_rotation_between_planes(norm_init, norm_final)
-        calc_angles = R.from_matrix(rotation_matrix).as_rotvec(degrees=False)
-        Rx,Ry,Rz = base_angles + calc_angles
+        Rx, Ry, Rz = R.from_matrix(rotation_matrix).as_rotvec(degrees=False)
+        Rx -= math.pi
+        Rx, Ry, Rz = base_angles + [Rx, Ry, Rz]
         return Rx,Ry,Rz
 
     def get_robot_coords(self, camera_coords):
@@ -260,8 +280,8 @@ class VisionClient():
                 classes, conf_list = self.cm.predict(self.path+"/crops/Crate/")
                 get_logger(__name__).log(logging.DEBUG,
                                          f"Received predictions from models")
-                data_image = Image.open("vision/input_color.jpg")#self.path+"/image0.jpg") #seg prediction results
-                color_draw = ImageDraw.Draw(data_image)
+                self.data_image = Image.open("vision/input_color.jpg")#self.path+"/image0.jpg") #seg prediction results
+                self.color_draw = ImageDraw.Draw(self.data_image)
                 depth_image = np.asanyarray(depth_frame.get_data())
                 min_depth = 850
                 max_depth = 1700
@@ -271,16 +291,17 @@ class VisionClient():
                 cv2.imwrite("vision/depth.jpg", depth_colormap)
 
                 masks = results[0].masks
+                self.coords_2d = []
                 for (mask_raw,cls) in zip(masks,classes):  
-                    rel_2d_points = self.get_2d_points(mask_raw, data_image.size, color_draw)
+                    rel_2d_points = self.get_2d_points(mask_raw, self.data_image.size, self.color_draw)
                     if not rel_2d_points:
                         get_logger(__name__).log(logging.DEBUG,
                                                  "Box has incorrect shape -> no crate")
                         continue
-
-                    rel_3d_points = self.get_camera_3d_points(depth_frame, rel_2d_points, self.color_intrin,data_image.size)
+                    self.coords_2d.append(rel_2d_points)
+                    rel_3d_points = self.get_camera_3d_points(depth_frame, rel_2d_points, self.color_intrin,self.data_image.size)
                     success, rot, trans = cv2.solvePnP(np.array(rel_3d_points).astype("float32"),np.array(rel_2d_points).astype("float32"),self.k,self.d)
-                    self.show_3d_points(rel_3d_points[:4],rot, trans, self.k, self.d, color_draw)
+                    self.show_3d_points(rel_3d_points[:4],rot, trans, self.k, self.d, self.color_draw)
 
                     def sort_robot_coords(coords):
                         top_points = np.sort(coords[:2],axis=0)[::-1]
@@ -302,9 +323,9 @@ class VisionClient():
                    
                     get_logger(__name__).log(logging.DEBUG,
                                              f"Calculated pickup point: {pickup_point}, crate_height: {crate_height}")
-                    color_draw.text(rel_2d_points[4], f"{cls,pickup_point},{crate_height}", fill=(255,255,255), direction="ttb")
+                    self.color_draw.text(rel_2d_points[4], f"{cls,pickup_point},{crate_height}", fill=(255,255,255))#, direction="ttb")
                     
-                data_image.save("vision/distance_annot.jpg")
+                self.data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True)
                 for f in files:
                     os.remove(f)
@@ -343,7 +364,11 @@ class VisionClient():
         if val_results:
             def get_coord_2(item):
                 return item["coords"][2]
-            highest_entry = max(val_results, key=get_coord_2)
+            
+            #highest_entry = max(val_results, key=get_coord_2)
+            max_index, highest_entry = max(enumerate(val_results), key=lambda x: get_coord_2(x[1]))
+            print(max_index)
+            self.show_heighest_box(max_index)
 
             if highest_entry["class"] == "NoPickupCrate":
                 raise NoPickUpCrateException("Highest Crate is NoPickupCrate")
@@ -372,6 +397,11 @@ class VisionClient():
         else:
             raise NoDetectedCratesException()
     
+    def show_heighest_box(self, index_highest):
+        coords_2d = self.coords_2d[index_highest]
+        self.color_draw.polygon(coords_2d[:4],(255,0,0))
+        self.data_image.save("distance_annot_2.jpg")
+
     def get_crate_height(self,coords):
         def calc_3d_distance(a,b):
             x1,y1,z1 = a

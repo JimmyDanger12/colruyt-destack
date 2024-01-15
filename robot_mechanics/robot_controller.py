@@ -261,7 +261,10 @@ class RobotController():
         DIG_OUT_ACT_SLI_EXT.write(1) 
         time.sleep(3.5) 
         DIG_OUT_ACT_SLI_EXT.write(0)
+        get_logger(__name__).log(logging.DEBUG,
+            f"deployed safety slider")
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
+        time.sleep(1) 
         get_logger(__name__).log(logging.DEBUG,
             f"deployed safety system")
         
@@ -296,6 +299,7 @@ class RobotController():
         time.sleep(3.5) 
         DIG_OUT_ACT_SLI_RETR.write(0)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
+        time.sleep(1) 
         get_logger(__name__).log(logging.DEBUG,
             f"retracted safety system")
         

@@ -398,7 +398,7 @@ class VisionClient():
             raise NoDetectedCratesException()
     
     def show_heighest_box(self, index_highest):
-        coords_2d = self.coords_2d[index_highest]
+        coords_2d = np.array(self.coords_2d[index_highest])
         self.color_draw.polygon(coords_2d[:4],(255,0,0))
         self.data_image.save("distance_annot_2.jpg")
 

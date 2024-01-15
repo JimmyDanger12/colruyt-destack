@@ -117,7 +117,7 @@ class VisionClient():
         rel_2d_points.append([center_x,center_y])
 
         r = 5
-        for i, (x,y) in enumerate(rel_2d_points):
+        for i, (x,y) in enumerate(rel_2d_points[:5]):
             x = int(np.clip(x, 0, limits[0]-1))
             y = int(np.clip(y, 0, limits[1]-1))
             rel_2d_points[i] = [x,y]
@@ -183,6 +183,7 @@ class VisionClient():
             r=5
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
             c1.text((x,y),f"{point_3d}")
+        self.data_image.save("vision/pickup_point.jpg")
 
     def calculate_rotational_angles(self, coords):
         def get_normal_vector(coords):
@@ -284,11 +285,12 @@ class VisionClient():
                                                  "Box has incorrect shape -> no crate")
                         continue
                     self.coords_2d.append(rel_2d_points)
+                    self.color_draw.text(rel_2d_points[5],cls,(255,255,255))
                     rel_3d_points = self.get_camera_3d_points(depth_frame, rel_2d_points, self.color_intrin,self.data_image.size)
                     if not rel_3d_points:
                         continue
                     success, rot, trans = cv2.solvePnP(np.array(rel_3d_points).astype("float32"),np.array(rel_2d_points).astype("float32"),self.k,self.d)
-                    self.show_3d_points(rel_3d_points[:4],rot, trans, self.k, self.d, self.color_draw)
+                    self.show_3d_points([rel_3d_points[4]],rot, trans, self.k, self.d, self.color_draw)
 
                     def sort_robot_coords(coords):
                         top_points = np.sort(coords[:2],axis=0)[::-1]
@@ -333,7 +335,10 @@ class VisionClient():
         - If PickupCrate - return coords
         - If NoPickupCrate - return assistance message
         """
-        results = self.get_pickup_locations()
+        try:
+            results = self.get_pickup_locations()
+        except Exception as e:
+            print("Vision Exception",e)
 
         val_results = []
         for res in results:
@@ -366,7 +371,7 @@ class VisionClient():
                         # Ensure that the input value is within the specified range
                         in_max = 0.3
                         in_min = -0.275
-                        out_max = 0.0075
+                        out_max = 0.005
                         out_min = -0.0075
                         value = max(min(coords[0], in_max), in_min)
                         # Perform the linear interpolation
@@ -386,8 +391,8 @@ class VisionClient():
     
     def show_heighest_box(self, index_highest):
         coords_2d = np.array(self.coords_2d[index_highest])
-        self.color_draw.polygon(coords_2d[:4],(255,0,0))
-        self.data_image.save("distance_annot_2.jpg")
+        self.color_draw.polygon(coords_2d[:4],(255,0,0),width=5)
+        self.data_image.save("vision/distance_annot_2.jpg")
 
     def get_crate_height(self,coords):
         def calc_3d_distance(a,b):

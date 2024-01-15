@@ -39,6 +39,8 @@ class Handler():
         
         get_logger(__name__).log(logging.INFO,
                                  "Robot testing done")
+        self.test_vision()
+        return
         self.robot_controller.connect()
         self.robot_controller.start_destack()
         return

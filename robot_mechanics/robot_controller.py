@@ -103,7 +103,7 @@ class RobotController():
                 self.turn_conv_on()
             else: 
                 get_logger(__name__).log(logging.INFO,
-                    f"drop off not comfirmed, alerting worker")
+                    f"drop off not confirmed, alerting worker")
                 alerted = True
                 self.alert_worker()
                 break

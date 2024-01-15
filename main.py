@@ -13,4 +13,5 @@ if __name__ == "__main__":
     handler = Handler()
     config = GlobalConfig(DEFAULT_CONFIG_PATH)
 
+
     handler.start(config)

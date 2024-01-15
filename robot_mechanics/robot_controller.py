@@ -37,7 +37,7 @@ class RobotController():
 
         self.pre_pick = [-0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
         self.post_pick = [-0.12111, -0.40713, 0.37773, 0.8309, -0.8033, 1.4556]
-        self.place_pos = [-0.70156, 0.40176, 0.01387, 0.0, -1.6, 0.0] 
+        self.place_pos = [-0.70156, 0.38036, 0.01387, 0.0, -1.6, 0.0] 
         self.start_pos = [-1.0433, 0.40644, 0.4366, 0.0, -1.6, 0.0]
         self.pre_place = [-0.67659, 0.39188, 0.21248, 0.0134, -1.1911, 0.0044]
         self.via_pose = [-0.612, -0.305, 0.340, 0.55, -1.5, 0.56]
@@ -93,9 +93,9 @@ class RobotController():
                 self.move_out_carrier(pick_loc) 
             except Exception as e:
                 break
-            self.depl_safety_syst()
+            #self.depl_safety_syst()
             self.move_pre_place_pos()
-            self.retr_safety_syst()
+            #self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -227,14 +227,15 @@ class RobotController():
             f"Starting reading pressure")
         alerted=False
         while True:
-            """pressure_value = ANA_IN_PRESSR.read()
-            if pressure_value < 0.900:
+            pressure_value = ANA_IN_PRESSR.read()
+            print(pressure_value)
+            if pressure_value < 0.600:
                 get_logger(__name__).log(logging.WARNING,
                     f"Pressure loss, alerting worker")
                 alerted=True
                 self.stop()
                 self.alert_worker()
-                break"""
+                break
             current_pos = self.rob.getl(wait=True)
             if are_coords_within_tolerance(current_pos[:3],goal_pos[:3], 0.01):
                 break
@@ -261,10 +262,8 @@ class RobotController():
         DIG_OUT_ACT_SLI_EXT.write(1) 
         time.sleep(3.5) 
         DIG_OUT_ACT_SLI_EXT.write(0)
-        get_logger(__name__).log(logging.DEBUG,
-            f"deployed safety slider")
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
-        time.sleep(1) 
+        time.sleep(3) 
         get_logger(__name__).log(logging.DEBUG,
             f"deployed safety system")
         
@@ -299,7 +298,7 @@ class RobotController():
         time.sleep(3.5) 
         DIG_OUT_ACT_SLI_RETR.write(0)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
-        time.sleep(1) 
+        time.sleep(3) 
         get_logger(__name__).log(logging.DEBUG,
             f"retracted safety system")
         
@@ -347,6 +346,8 @@ class RobotController():
         self.rob.set_digital_out(DIG_OUT_CONV, 1)
         get_logger(__name__).log(logging.DEBUG,
             f"turned conveyer on")
+        time.sleep(3)
+        self.rob.set_digital_out(DIG_OUT_CONV, 0)
 
     def stop(self):
         """

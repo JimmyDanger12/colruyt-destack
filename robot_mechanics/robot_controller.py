@@ -99,7 +99,6 @@ class RobotController():
             #self.depl_safety_syst()
             self.move_pre_place_pos()
             #self.retr_safety_syst()
-            self.rob.set_digital_out(DIG_OUT_CONV, 0)
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -294,7 +293,6 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"retracting safety system")
-        self.rob.set_digital_out(DIG_OUT_CONV, 0)
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
         time.sleep(3)
         DIG_OUT_ACT_SLI_RETC.write(1) 
@@ -310,6 +308,7 @@ class RobotController():
         This function contains the movements:
         - move crate on conveyor
         """
+        self.rob.set_digital_out(DIG_OUT_CONV, 0)
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyor")
         pos = self.place_pos

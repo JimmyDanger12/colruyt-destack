@@ -51,15 +51,19 @@ class RobotController():
         self._change_status(status)   
 
     def connect_arduino(self):
-        board = pyfirmata.Arduino('COM8')
+        board = pyfirmata.Arduino('COM3')
         it = pyfirmata.util.Iterator(board)
         it.start()
 
+        global DIG_OUT_ACT_SLI_EXT
         DIG_OUT_ACT_SLI_EXT = board.digital[7]
+        global DIG_OUT_ACT_SLI_RETR
         DIG_OUT_ACT_SLI_RETR = board.digital[8]
         DIG_OUT_ACT_SLI_EXT.write(0) 
         DIG_OUT_ACT_SLI_RETR.write(0)
+        global ANA_IN_PRESSR
         ANA_IN_PRESSR = board.get_pin('a:0:i')
+        global ANA_IN_PRESSL
         ANA_IN_PRESSL = board.get_pin('a:1:i')
     
     def test_vision(self):
@@ -71,6 +75,7 @@ class RobotController():
         #self.move_picked_pos()
     
     def test_drop_off(self):
+        self.move_start_pos()
         self.depl_safety_syst()
         time.sleep(5)
         self.retr_safety_syst()
@@ -98,10 +103,11 @@ class RobotController():
             try:
                 self.move_out_carrier(pick_loc) 
             except Exception as e:
+                print("Exception",e)
                 break
-            #self.depl_safety_syst()
+            self.depl_safety_syst()
             self.move_pre_place_pos()
-            #self.retr_safety_syst()
+            self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -233,7 +239,7 @@ class RobotController():
             f"Starting reading pressure")
         alerted=False
         while True:
-            pressure_value = ANA_IN_PRESSR.read()
+            pressure_value = 0.8 #ANA_IN_PRESSR.read() # +ANA_IN_PRESSL.read()
             print(pressure_value)
             if pressure_value < 0.600:
                 get_logger(__name__).log(logging.WARNING,

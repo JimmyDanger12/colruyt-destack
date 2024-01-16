@@ -272,7 +272,7 @@ class VisionClient():
         w=txt.rotate(90,  expand=1)
 
         self.data_image.paste( ImageOps.colorize(w, (0,0,0), (255,255,255)), (242,60),  w)
-        self.data_image.show("Class")
+        #self.data_image.show("Class")
     
     def show_heighest_box(self, index_highest):
         coords_2d = np.array(self.coords_2d[index_highest])
@@ -426,7 +426,7 @@ class VisionClient():
                         return z_offset
                         
                     coords[0] += 0.025
-                    coords[1] += 0.035
+                    coords[1] += 0.0375
                     coords[2] += apply_z_offset(coords) - 0.12
                     return coords
 

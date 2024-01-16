@@ -219,7 +219,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.DEBUG,
             f"starting move out carrier")
-        self.rob.movel([0, 0, 0.01, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
+        self.rob.movel([0, 0, 0.015, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
         goal_pos = []
         if pick_loc[2] >= 0.10 :
             get_logger(__name__).log(logging.DEBUG,

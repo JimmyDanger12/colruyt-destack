@@ -363,7 +363,6 @@ class VisionClient():
                     self.color_draw.text(rel_2d_points[4], f"{cls,pickup_point},{crate_height}", fill=(255,255,255))#, direction="ttb")
                     
                 self.data_image.save("vision/distance_annot.jpg")
-                self.data_image.save("robot_mechanics/static/display_img.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True)
                 for f in files:
                     os.remove(f)

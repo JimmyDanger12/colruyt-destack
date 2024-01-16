@@ -51,14 +51,6 @@
         .status_icon.stopped {
             color: darkred;
         }
-        .rotate_image {
-            transform: rotate(90deg);
-            top:110px;
-            right:-5px;
-            width: 300px;
-            height: 125px;
-            position: absolute;
-        }
         body {
             height: 100%;
             font-family: Arial, sans-serif;
@@ -99,9 +91,6 @@
             border-radius: 5px;
             resize: none;
         }
-        #imageContainer {
-            position:relative;
-        }   
     </style>
     <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
     <script>
@@ -123,12 +112,7 @@
         });
 
         socket.on('update_status', function(data) {
-            const newStatus = data.status;
-            const messageData = data.data;
-            const messageType = messageData.message_type;
-            const message = messageData.message;
-            console.log(messageType);
-            console.log(message); // TODO: display message somewhere
+            const newStatus = data;
 
             // Update the status text
             document.getElementById("status").innerText = 'Status: ' + newStatus;
@@ -148,11 +132,6 @@
                 statusIcon.classList.add("running");
             } else if (newStatus === "Need Assistance") {
                 statusIcon.classList.add("need_assistance");
-
-                if (messageType === "NoPickupCrate") {
-
-                    document.getElementById("imageDisplay").src = "{{ url_for('static', filename='display_img.jpg') }}";
-                };
             } else if (newStatus === "Done") {
                 statusIcon.classList.add("done");
             } else if (newStatus === "Stopped") {
@@ -160,12 +139,13 @@
             }
         });
 
+
     </script>
 </head>
 <body>
     <header>
         <div class="center_logo">
-            <img class="main_logo" src="{{ url_for('static', filename='main-logo.png') }}" alt="Main Logo">
+            <img class="main_logo" src="{{ url_for('static', filename='main-logo.png') }}" alt="Main Log">
         </div>
         <div class="side_logos">
             <img class="logo" src="{{ url_for('static', filename='THUAS-logo.jpg') }}" alt="THUAS Logo">
@@ -173,15 +153,14 @@
         </div>
     </header>
     <div style="display: flex; justify-content: center; align-items: top;">
-        <div id="imageContainer">
-            <img id="imageDisplay" class="rotate_image">
-        </div>
         <div style="display: flex; flex-direction: column; align-items: center;">
             <h3 style="text-align: center;">
                 <span id="status_icon" class="status_icon initializing">●</span>
                 <span id="status">Status: Initializing</span>
             </h3>
             <button onclick="emitEvent('start_destack')">Start Unloading</button>
+            <button onclick="emitEvent('destack_done')">Unloading Done</button>
+            <button onclick="emitEvent('emergency_stop')" style="background-color: darkred;">Emergency Stop</button>
         </div>
         
         <div style="margin-left: 20px;">

@@ -39,6 +39,11 @@ class Handler():
         
         get_logger(__name__).log(logging.INFO,
                                  "Robot testing done")
+        self.test_vision()
+        return
+        self.robot_controller.connect()
+        self.robot_controller.start_destack()
+        return
         try:
             self.start_server()
         except Exception as e:
@@ -113,9 +118,9 @@ class Handler():
                 self.socketio.emit('new_log', {'data': new_content.strip()})
             time.sleep(1)
     
-    def change_status(self,status,data={}):
+    def change_status(self,status):
         self.status = status
-        self.socketio.emit("update_status", {'status':self.status, 'data': data})
+        #self.socketio.emit("update_status",self.status)
 
     def handle_command(self, command):
         if command not in COMMANDS:
@@ -123,15 +128,15 @@ class Handler():
                         f"Unknown command {command}")
             return
         if command == CMD_CONNECT_TO_ROBOT:
-            pass
-            #self.robot_controller.connect()
+            self.robot_controller.connect()
         else:
-            if not self.robot_controller.rob: #TODO: change again!
+            if self.robot_controller.rob:
                 get_logger(__name__).log(logging.INFO,
                         f"Executing command '{command}' started")
                 self.change_status(Status.Running)
                 try:
                     if command == CMD_START_DESTACK:
+                        self.robot_controller.start_destack()
                     elif command == CMD_DESTACK_DONE:
                         self.robot_controller.destack_done()
                     elif command == CMD_EMERGENCY_STOP:

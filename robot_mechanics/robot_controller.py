@@ -136,14 +136,14 @@ class RobotController():
         - move to start position 
         - set the tool center point 
         """
-        get_logger(__name__).log(logging.DEBUG,
+        get_logger(__name__).log(logging.INFO,
             f"Starting move to start pos")
         self.rob.set_tcp(self.tcp_bar) 
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp")
         self.rob.movel(self.start_pos, acc=1, vel=0.25) 
-        get_logger(__name__).log(logging.DEBUG,
-            f"Move start pos completed")
+        get_logger(__name__).log(logging.INFO,
+            f"Completed move to start pos")
         
 
     def retrieve_pick_pos(self):
@@ -170,11 +170,11 @@ class RobotController():
         This function contains the movements:
         - move to pre-pick position
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting move to pre pick pos")
+        get_logger(__name__).log(logging.INFO,
+            f"Starting move to pre pick pos")
         self.rob.movels([self.via_pose, self.pre_pick], acc=1, vel=0.4, radius=0.05)
-        get_logger(__name__).log(logging.DEBUG,
-            f"completed move to pre pick pos")
+        get_logger(__name__).log(logging.INFO,
+            f"Completed move to pre pick pos")
         
     
     def move_pre_picked_pos(self, pick_loc, pick_ori):
@@ -183,12 +183,12 @@ class RobotController():
         - move to just above pick position
         - tilt forward to allow movement on to crate
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting move to pre picked")
+        get_logger(__name__).log(logging.INFO,
+            f"Starting move to pre picked")
         self.rob.movel([pick_loc[0], pick_loc[1], pick_loc[2]+0.03] + pick_ori, acc=1, vel=0.2)
         self.rob.movel_tool([0, 0, 0, 0, -0.35, 0], acc=1, vel=0.1)
-        get_logger(__name__).log(logging.DEBUG,
-            f"completed move to pre picked")
+        get_logger(__name__).log(logging.INFO,
+            f"Completed move to pre picked")
         
 
     def move_picked_pos(self):
@@ -198,16 +198,16 @@ class RobotController():
         - tilt back around the hooks to vertical position
         - tilt back around the bottom of the plate to pick up crate
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting picking")
+        get_logger(__name__).log(logging.INFO,
+            f"Starting crate pick")
         self.rob.movel([0, 0, -0.035, 0, 0, 0], acc=1, vel=0.05, relative=True)
         movement = [-0.005, 0 , 0.005, 0, 0.35, 0] #move around hooks
         self.rob.movel_tool(movement, acc=1, vel=0.05)
         movement = [-0.01, 0, -0.05, 0, 0.35, 0] #move around plate
         movement = [x*0.8 for x in movement]
         self.rob.movel_tool(movement, acc=1, vel=0.02)
-        get_logger(__name__).log(logging.DEBUG,
-            "Move picked_pos completed")
+        get_logger(__name__).log(logging.INFO,
+            "Completed crate pick")
         
 
     def move_out_carrier(self, pick_loc):
@@ -217,18 +217,18 @@ class RobotController():
         - checking with the pressure sensors if the crate has been picked and not fallen down 
         - move the crate back out of the carrier
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting move out carrier")
+        get_logger(__name__).log(logging.INFO,
+            f"Starting move out carrier")
         self.rob.movel([0, 0, 0.015, 0, 0, 0], acc=0.5, vel=0.01, relative=True)
         goal_pos = []
         if pick_loc[2] >= 0.10 :
             get_logger(__name__).log(logging.DEBUG,
-            "above base")
+            "crate above base")
             goal_pos = [pick_loc[0], -0.55, pick_loc[2]] + self.post_pick[3:6]
             self.rob.movel(goal_pos, acc=1, vel=0.1, wait=False)
         elif pick_loc [2] < 0.10 : 
             get_logger(__name__).log(logging.DEBUG,
-            "lower then base")
+            "crate lower than base")
             goal_pos = [pick_loc[0], -0.55, self.post_pick[2]] + self.post_pick[3:6]
             self.rob.movel(goal_pos, acc=1, vel=0.1, wait=False)
 
@@ -241,7 +241,6 @@ class RobotController():
         alerted=False
         while True:
             pressure_value = 0.8 #ANA_IN_PRESSR.read() # +ANA_IN_PRESSL.read()
-            print(pressure_value)
             if pressure_value < 0.600:
                 get_logger(__name__).log(logging.WARNING,
                     f"Pressure loss, alerting worker")
@@ -257,8 +256,8 @@ class RobotController():
         if alerted:
             raise Exception("Pressure lost")
         else:
-            get_logger(__name__).log(logging.DEBUG,
-                f"completed move out carrier")
+            get_logger(__name__).log(logging.INFO,
+                f"Completed move out carrier")
 
 
     def depl_safety_syst(self):
@@ -269,7 +268,7 @@ class RobotController():
         - retracting the bottom plate
         """
         get_logger(__name__).log(logging.DEBUG,
-            f"deploying safety system")
+            f"Started deploying safety system")
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 0)
         time.sleep(1)
         DIG_OUT_ACT_SLI_EXT.write(1) 
@@ -278,7 +277,7 @@ class RobotController():
         self.rob.set_digital_out(DIG_OUT_CYL_BOT, 1)
         time.sleep(3) 
         get_logger(__name__).log(logging.DEBUG,
-            f"deployed safety system")
+            f"Completed deploying safety system")
         
 
     def move_pre_place_pos(self):
@@ -287,12 +286,12 @@ class RobotController():
         - move to post pick 
         - move to pre place 
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting move to pre place")
+        get_logger(__name__).log(logging.INFO,
+            f"Starting move to pre place")
         self.rob.movel(self.post_pick, acc=1, vel=0.1)
         self.rob.movels([self.post_via_pose,self.pre_place], acc=1, vel=0.2, radius=0.1)
-        get_logger(__name__).log(logging.DEBUG,
-            f"completed move to pre place")
+        get_logger(__name__).log(logging.INFO,
+            f"Completed move to pre place")
         
 
     def retr_safety_syst(self):
@@ -321,16 +320,15 @@ class RobotController():
         This function contains the movements:
         - move crate on conveyor
         """
+        get_logger(__name__).log(logging.INFO,
+            f"Starting move on conveyor")
         self.rob.set_digital_out(DIG_OUT_CONV, 0)
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting move on conveyor")
         pos = copy.deepcopy(self.place_pos)
         movement = round(crate_height - 0.17,3)
         pos[2] += movement
-        print("Move up from conv",movement, "Crate Height:",crate_height, "New Pos:", pos)
         self.rob.movel(pos, acc=1, vel=0.05)
-        get_logger(__name__).log(logging.DEBUG,
-            f"completed move on conveyor")
+        get_logger(__name__).log(logging.INFO,
+            f"Completed move on conveyor")
         
 
     def move_place_crate(self):
@@ -339,14 +337,14 @@ class RobotController():
         - tilt foward around the hooks to place the crate
         - move up from the placed crate 
         """
-        get_logger(__name__).log(logging.DEBUG,
-            f"starting move place crate")
+        get_logger(__name__).log(logging.INFO,
+            f"Starting placing crate")
         movement = [0.004, 0 , -0.004, 0, -0.25, 0] #move around hooks
         movement = [x*1.25 for x in movement]
         self.rob.movel_tool(movement, acc=1, vel=0.05)
         self.rob.movel([0,0,0.2,0,0,0], acc=1, vel=0.1, relative=True)
-        get_logger(__name__).log(logging.DEBUG,
-            f"completed move place crate")
+        get_logger(__name__).log(logging.INFO,
+            f"Completed placing crate")
         
 
     def turn_conv_on(self):

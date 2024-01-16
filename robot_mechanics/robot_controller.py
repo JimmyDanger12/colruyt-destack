@@ -5,21 +5,15 @@ from backend_logging import get_logger
 import logging
 import time
 import numpy
+import copy
 import pyfirmata2 as pyfirmata
 
-board = pyfirmata.Arduino('COM8')
-it = pyfirmata.util.Iterator(board)
-it.start()
-
-DIG_OUT_CYL_BOT = 3
-DIG_OUT_ACT_SLI_EXT = board.digital[7]
-DIG_OUT_ACT_SLI_RETR = board.digital[8]
-DIG_OUT_ACT_SLI_EXT.write(0) 
-DIG_OUT_ACT_SLI_RETR.write(0)
-DIG_IN_DROPOFF = 3
-ANA_IN_PRESSR = board.get_pin('a:0:i')
-ANA_IN_PRESSL = board.get_pin('a:1:i')
 DIG_OUT_CONV = 4
+DIG_IN_DROPOFF = 3
+DIG_OUT_CYL_BOT = 3
+ANA_IN_PRESSR = None
+DIG_OUT_ACT_SLI_EXT = None
+DIG_OUT_ACT_SLI_RETR = None
 
 class RobotController():
     """
@@ -31,7 +25,6 @@ class RobotController():
         self.ip = ip
         self.vision_client = VisionClient()
         self.rob = None
-        
 
         self.tcp_bar = [0.02, 0, 0.1095, 0, 0, 0]
 
@@ -50,12 +43,25 @@ class RobotController():
             get_logger(__name__).log(logging.INFO,
                 "Robot connected")
             self.vision_client.connect()
+            self.connect_arduino()
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                 f"Error when connecting to robot: {e}")
             status = Status.Disconnected       
         self._change_status(status)   
 
+    def connect_arduino(self):
+        board = pyfirmata.Arduino('COM8')
+        it = pyfirmata.util.Iterator(board)
+        it.start()
+
+        DIG_OUT_ACT_SLI_EXT = board.digital[7]
+        DIG_OUT_ACT_SLI_RETR = board.digital[8]
+        DIG_OUT_ACT_SLI_EXT.write(0) 
+        DIG_OUT_ACT_SLI_RETR.write(0)
+        ANA_IN_PRESSR = board.get_pin('a:0:i')
+        ANA_IN_PRESSL = board.get_pin('a:1:i')
+    
     def test_vision(self):
         self.rob.set_tcp(self.tcp_bar)
         self.move_start_pos()
@@ -311,7 +317,7 @@ class RobotController():
         self.rob.set_digital_out(DIG_OUT_CONV, 0)
         get_logger(__name__).log(logging.DEBUG,
             f"starting move on conveyor")
-        pos = self.place_pos
+        pos = copy.deepcopy(self.place_pos)
         movement = round(crate_height - 0.17,3)
         pos[2] += movement
         print("Move up from conv",movement, "Crate Height:",crate_height, "New Pos:", pos)
@@ -367,5 +373,5 @@ class RobotController():
         self._change_status(Status.Done)
         #TODO: remove / add functionality
 
-    def _change_status(self, status):
-        self.handler.change_status(status)
+    def _change_status(self, status, message=None):
+        self.handler.change_status(status, message)

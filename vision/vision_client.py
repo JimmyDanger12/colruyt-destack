@@ -182,7 +182,6 @@ class VisionClient():
             r=5
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
             c1.text((x,y),f"{point_3d}")
-        self.data_image.save("vision/pickup_point.jpg")
 
     def calculate_rotational_angles(self, coords):
         def get_normal_vector(coords):
@@ -219,9 +218,7 @@ class VisionClient():
                 [axis[1] * axis[0] * (1 - np.cos(angle)) + axis[2] * np.sin(angle), np.cos(angle) + axis[1]**2 * (1 - np.cos(angle)), axis[1] * axis[2] * (1 - np.cos(angle)) - axis[0] * np.sin(angle)],
                 [axis[2] * axis[0] * (1 - np.cos(angle)) - axis[1] * np.sin(angle), axis[2] * axis[1] * (1 - np.cos(angle)) + axis[0] * np.sin(angle), np.cos(angle) + axis[2]**2 * (1 - np.cos(angle))]
             ])
-
             return rotation_matrix
-
 
         base_angles = np.array([1.209,-1.209,1.209])
 
@@ -267,6 +264,7 @@ class VisionClient():
         t = np.array([0.18212,0.11633,0.38649])
         new_coords = np.dot(R,camera_coords) + t
         return new_coords
+    
     def draw_class(self,coords, cls):
         txt=Image.new('L', (500,50))
         d = ImageDraw.Draw(txt)
@@ -274,9 +272,11 @@ class VisionClient():
         w=txt.rotate(90,  expand=1)
 
         self.data_image.paste( ImageOps.colorize(w, (0,0,0), (255,255,255)), (242,60),  w)
+        self.data_image.show("Class")
     
     def show_heighest_box(self, index_highest):
         coords_2d = np.array(self.coords_2d[index_highest])
+        print("Coords for heighest box:",coords_2d[:4])
         self.color_draw.polygon(coords_2d[:4],(255,0,0),width=5)
         self.data_image.save("vision/distance_annot_2.jpg")
 
@@ -292,8 +292,8 @@ class VisionClient():
         approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
 
         actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
-        print("Robot_Coords:",coords)
-        print("Act.Hgt:",actual_height,"Apr.Hgt:",round(approx_height,3),"Apr.Diff:",round(approx_height_1-approx_height_2,3))
+        get_logger(__name__).log(logging.DEBUG,("Robot_Coords:",coords))
+        get_logger(__name__).log(logging.DEBUG,("Act.Hgt:",actual_height,"Apr.Hgt:",round(approx_height,3),"Apr.Diff:",round(approx_height_1-approx_height_2,3)))
         return actual_height
     
     def get_pickup_locations(self):
@@ -354,10 +354,9 @@ class VisionClient():
                     crate_height = self.get_crate_height(robot_coords)
 
                     x,y,z = self.get_robot_coords(rel_3d_points[4])
-                    rx,ry,rz = self.calculate_rotational_angles(robot_coords)
+                    rx,ry,rz = [1.209, -1.209, 1.209] #self.calculate_rotational_angles(robot_coords) #TODO: not accurate enough
                     pickup_point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
                     coords_3d.append({"coords":pickup_point,"class":cls,"height":crate_height})
-
                    
                     get_logger(__name__).log(logging.DEBUG,
                                              f"Calculated pickup point: {pickup_point}, crate_height: {crate_height}")
@@ -424,7 +423,6 @@ class VisionClient():
                         value = max(min(coords[0], in_max), in_min)
                         # Perform the linear interpolation
                         z_offset = (value - in_min) / (in_max - in_min) * (out_max - out_min) + out_min
-                        print("Z_offset",z_offset)
                         return z_offset
                         
                     coords[0] += 0.025

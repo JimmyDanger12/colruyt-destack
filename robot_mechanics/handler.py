@@ -116,6 +116,8 @@ class Handler():
     def change_status(self,status, data={}):
         self.status = status
         self.socketio.emit("update_status",{"status":status,"data":data})
+        get_logger(__name__).log(logging.INFO,
+                                 f"Changed status to",status)
 
     def handle_command(self, command):
         if command not in COMMANDS:

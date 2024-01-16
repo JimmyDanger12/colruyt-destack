@@ -175,6 +175,7 @@ class VisionClient():
         return rel_3d_points
 
     def show_3d_points(self,points_3d, rot, trans, k, d, c1):
+        print(points_3d)
         for point_3d in points_3d:
             point_3d = np.array(point_3d,dtype=np.float64)
             point_2d, jacobian = cv2.projectPoints(point_3d, rot, trans, k, d)
@@ -266,7 +267,8 @@ class VisionClient():
         return new_coords
     
     def draw_class(self,coords, cls):
-        txt=Image.new('L', (500,50))
+        print("Class_coords",coords,cls)
+        txt=Image.new('L', (720,1280))
         d = ImageDraw.Draw(txt)
         d.text(coords, cls,  font=self.font, fill=255)
         w=txt.rotate(90,  expand=1)

@@ -186,7 +186,7 @@
             <button onclick="emitEvent('emergency_stop')" style="background-color: darkred;">Emergency Stop</button>-->
         </div>
         
-        <div style="margin-left: 20px;">
+        <div style="margin-left: 20px; overflow: auto; max-height: 100%; display: flex; flex-direction: column-reverse;">
             <h3 style="text-align: center;">Log Messages</h3>
             <textarea id="log" rows="10" readonly></textarea>
         </div>

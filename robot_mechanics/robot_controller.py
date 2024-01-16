@@ -7,7 +7,7 @@ import time
 import numpy
 import pyfirmata2 as pyfirmata
 
-board = pyfirmata.Arduino('COM3')
+board = pyfirmata.Arduino('COM8')
 it = pyfirmata.util.Iterator(board)
 it.start()
 
@@ -146,7 +146,7 @@ class RobotController():
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
         #pick_ori = pick_coords[3:6]
-        pick_ori = [1.2, -1.2, 1.2]
+        pick_ori = [1.209, -1.209, 1.209]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_loc, pick_ori, crate_height

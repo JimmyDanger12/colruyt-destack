@@ -1,7 +1,7 @@
 import time
 start_time = time.time()
 import cv2
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import pyrealsense2 as rs
 import numpy as np
 import os
@@ -65,6 +65,7 @@ class VisionClient():
         align_to = rs.stream.color
         align = rs.align(align_to)
         filters = [rs.spatial_filter(),rs.temporal_filter()]
+        self.font = ImageFont.truetype("vision/data/Arial.ttf",30)
         get_logger(__name__).log(logging.DEBUG,
                                  f"Camera Initialization complete")
         return align, filters
@@ -103,8 +104,6 @@ class VisionClient():
         if box.shape != (4,1,2):
             return
         box = box.reshape(4,2)
-        #rect = cv2.minAreaRect(polygon)
-        #box = cv2.boxPoints(rect)
         sorted_box = box[np.argsort(box[:, 0])]
         top_points = [tuple(sorted_box[0]),tuple(sorted_box[1])]
         c1.polygon(box,outline=(0,255,0),width=5)
@@ -225,19 +224,41 @@ class VisionClient():
 
 
         base_angles = np.array([1.209,-1.209,1.209])
-        p1 = coords[1]
+
+        a_1 = np.mean([coords[0],coords[2]],axis=0)
+        a_2 = np.mean([coords[1],coords[3]],axis=0)
+        b_1 = np.mean([coords[0],coords[1]],axis=0)
+        b_2 = np.mean([coords[2],coords[3]],axis=0)
+
+        d_a = a_1 - a_2
+        d_b = b_1 - b_2
+
+        # Set up the system of equations
+        A = np.array([[-d_a[0], d_b[0]],
+                    [-d_a[1], d_b[1]],
+                    [-d_a[2], d_b[2]]])
+        b = a_2 - b_2
+
+        # Solve the system of equations
+        solution = np.linalg.lstsq(A, b, rcond=None)[0]
+
+        # Extract the intersection point
+        intersection_point = a_2 + d_a * solution[0]
+        final_coords = [intersection_point,b_2,a_2]
+
+        p1 = intersection_point
         p2 = [p1[0], p1[1], p1[2]+1]
         p3 = [p1[0]+1, p1[1], p1[2]]
         init_coords = np.array([p1, p2, p3])
 
         norm_init = get_normal_vector(init_coords)
-        norm_final = get_normal_vector([coords[1],coords[2],coords[3]])
+        norm_final = get_normal_vector(final_coords)
 
         rotation_matrix = find_rotation_between_planes(norm_init, norm_final)
         Rx, Ry, Rz = R.from_matrix(rotation_matrix).as_rotvec(degrees=False)
-        Rx -= math.pi
+        print("Rotation by (degrees)",np.round(np.rad2deg(Rx),2),np.round(np.rad2deg(Ry),2),np.round(np.rad2deg(Rz),2))
         Rx, Ry, Rz = base_angles + [Rx, Ry, Rz]
-        return Rx,Ry,Rz
+        return Rx, Ry, Rz
 
     def get_robot_coords(self, camera_coords):
         R = np.array([[0.98965,0.14059,-0.028841],
@@ -246,7 +267,35 @@ class VisionClient():
         t = np.array([0.18212,0.11633,0.38649])
         new_coords = np.dot(R,camera_coords) + t
         return new_coords
+    def draw_class(self,coords, cls):
+        txt=Image.new('L', (500,50))
+        d = ImageDraw.Draw(txt)
+        d.text(coords, cls,  font=self.font, fill=255)
+        w=txt.rotate(90,  expand=1)
 
+        self.data_image.paste( ImageOps.colorize(w, (0,0,0), (255,255,255)), (242,60),  w)
+    
+    def show_heighest_box(self, index_highest):
+        coords_2d = np.array(self.coords_2d[index_highest])
+        self.color_draw.polygon(coords_2d[:4],(255,0,0),width=5)
+        self.data_image.save("vision/distance_annot_2.jpg")
+
+    def get_crate_height(self,coords):
+        def calc_3d_distance(a,b):
+            x1,y1,z1 = a
+            x2,y2,z2 = b
+            distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
+            return distance
+
+        approx_height_1 = calc_3d_distance(coords[0][:3],coords[2][:3])
+        approx_height_2 = calc_3d_distance(coords[1][:3],coords[3][:3])
+        approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
+
+        actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
+        print("Robot_Coords:",coords)
+        print("Act.Hgt:",actual_height,"Apr.Hgt:",round(approx_height,3),"Apr.Diff:",round(approx_height_1-approx_height_2,3))
+        return actual_height
+    
     def get_pickup_locations(self):
         coords_3d = []
         align, filters = self.init_camera_streams()
@@ -284,8 +333,8 @@ class VisionClient():
                         get_logger(__name__).log(logging.DEBUG,
                                                  "Box has incorrect shape -> no crate")
                         continue
-                    self.coords_2d.append(rel_2d_points)
-                    self.color_draw.text(rel_2d_points[5],cls,(255,255,255))
+                    self.coords_2d.append(rel_2d_points) #used for heighest crate estimation
+                    self.draw_class(rel_2d_points[5],cls)
                     rel_3d_points = self.get_camera_3d_points(depth_frame, rel_2d_points, self.color_intrin,self.data_image.size)
                     if not rel_3d_points:
                         continue
@@ -323,7 +372,7 @@ class VisionClient():
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                                      f"Vision Exception {e}")
-            pass
+            return
         finally:
             self.pipeline.stop()
     
@@ -335,10 +384,9 @@ class VisionClient():
         - If PickupCrate - return coords
         - If NoPickupCrate - return assistance message
         """
-        try:
-            results = self.get_pickup_locations()
-        except Exception as e:
-            print("Vision Exception",e)
+        results = self.get_pickup_locations()
+        if not results:
+            raise
 
         val_results = []
         for res in results:
@@ -388,24 +436,3 @@ class VisionClient():
                 return coords,highest_entry["height"]
         else:
             raise NoDetectedCratesException()
-    
-    def show_heighest_box(self, index_highest):
-        coords_2d = np.array(self.coords_2d[index_highest])
-        self.color_draw.polygon(coords_2d[:4],(255,0,0),width=5)
-        self.data_image.save("vision/distance_annot_2.jpg")
-
-    def get_crate_height(self,coords):
-        def calc_3d_distance(a,b):
-            x1,y1,z1 = a
-            x2,y2,z2 = b
-            distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
-            return distance
-
-        approx_height_1 = calc_3d_distance(coords[0][:3],coords[2][:3])
-        approx_height_2 = calc_3d_distance(coords[1][:3],coords[3][:3])
-        approx_height = np.mean([approx_height_1,approx_height_2],axis=0)
-
-        actual_height = self.crate_dims.iloc[(self.crate_dims["height"]/1000 - approx_height).abs().argsort()[:1]]["height"].item()/1000
-        print("Robot_Coords:",coords)
-        print("Act.Hgt:",actual_height,"Apr.Hgt:",round(approx_height,3),"Apr.Diff:",round(approx_height_1-approx_height_2,3))
-        return actual_height

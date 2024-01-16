@@ -15,6 +15,7 @@ from scipy.spatial.transform import Rotation as R
 import warnings
 from vision.classification_model import ClassificationModel
 from vision.segmentation_model import SegmentationModel
+from scipy.spatial import ConvexHull
 
 VISION_PATH = "vision/crops/monkey/predict"
 
@@ -65,7 +66,7 @@ class VisionClient():
         align_to = rs.stream.color
         align = rs.align(align_to)
         filters = [rs.spatial_filter(),rs.temporal_filter()]
-        self.font = ImageFont.truetype("vision/data/Arial.ttf",30)
+        self.font = ImageFont.truetype("vision/data/Arial.ttf",24)
         get_logger(__name__).log(logging.DEBUG,
                                  f"Camera Initialization complete")
         return align, filters
@@ -175,7 +176,6 @@ class VisionClient():
         return rel_3d_points
 
     def show_3d_points(self,points_3d, rot, trans, k, d, c1):
-        print(points_3d)
         for point_3d in points_3d:
             point_3d = np.array(point_3d,dtype=np.float64)
             point_2d, jacobian = cv2.projectPoints(point_3d, rot, trans, k, d)
@@ -267,20 +267,26 @@ class VisionClient():
         return new_coords
     
     def draw_class(self,coords, cls):
-        print("Class_coords",coords,cls)
+        y, x = coords
+        x = self.data_image.size[1]-x - 60
+
         txt=Image.new('L', (720,1280))
         d = ImageDraw.Draw(txt)
-        d.text(coords, cls,  font=self.font, fill=255)
+        d.text((x,y), cls,  font=self.font, fill=255)
         w=txt.rotate(90,  expand=1)
 
-        self.data_image.paste( ImageOps.colorize(w, (0,0,0), (255,255,255)), (242,60),  w)
-        #self.data_image.show("Class")
+        self.data_image.paste( ImageOps.colorize(w, (0,0,0), (255,255,255)), (0,0),  w)
     
     def show_heighest_box(self, index_highest):
-        coords_2d = np.array(self.coords_2d[index_highest])
-        print("Coords for heighest box:",coords_2d[:4])
-        self.color_draw.polygon(coords_2d[:4],(255,0,0),width=5)
-        self.data_image.save("vision/distance_annot_2.jpg")
+        data_draw = ImageDraw.Draw(self.data_image,"RGBA")
+        coords_2d = np.array(self.coords_2d[index_highest])[:4]
+        get_logger(__name__).log(logging.DEBUG,f"Coords for heighest box: {coords_2d}")
+
+        hull = ConvexHull(coords_2d)
+
+        coords_2d = [coords_2d[i] for i in hull.vertices]
+
+        data_draw.polygon(coords_2d,fill=(255,0,255,125))
         self.data_image.save("robot_mechanics/static/display_img.jpg")
 
     def get_crate_height(self,coords):
@@ -363,7 +369,15 @@ class VisionClient():
                    
                     get_logger(__name__).log(logging.DEBUG,
                                              f"Calculated pickup point: {pickup_point}, crate_height: {crate_height}")
-                    self.color_draw.text(rel_2d_points[4], f"{cls,pickup_point},{crate_height}", fill=(255,255,255))#, direction="ttb")
+                    
+                    y,x = rel_2d_points[4]
+                    x = self.data_image.size[1]-x-80
+                    txt=Image.new('L', (720,1280))
+                    d = ImageDraw.Draw(txt)
+                    d.text((x,y), f"{pickup_point},{crate_height}",  font=self.font, fill=255)
+                    w=txt.rotate(90,  expand=1)
+
+                    self.data_image.paste(ImageOps.colorize(w, (0,0,0), (255,255,255)), (0,0),w)   
                     
                 self.data_image.save("vision/distance_annot.jpg")
                 files = glob.glob(os.path.join(self.path, '**/*.jpg'), recursive=True)
@@ -409,7 +423,6 @@ class VisionClient():
             
             #highest_entry = max(val_results, key=get_coord_2)
             max_index, highest_entry = max(enumerate(val_results), key=lambda x: get_coord_2(x[1]))
-            print(max_index)
             self.show_heighest_box(max_index)
 
             if highest_entry["class"] == "NoPickupCrate":

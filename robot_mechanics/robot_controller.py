@@ -380,5 +380,5 @@ class RobotController():
         self._change_status(Status.Done)
         #TODO: remove / add functionality
 
-    def _change_status(self, status, data=None):
+    def _change_status(self, status, data={}):
         self.handler.change_status(status, data)

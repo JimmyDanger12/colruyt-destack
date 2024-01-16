@@ -115,6 +115,7 @@
         socket.on('new_log', function(data) {
             logMessages += data.data + '\n'; // Add a newline character after each message
             document.getElementById('log').textContent = logMessages;
+            document.getElementById("log").scrollTop = document.getElementById("log").scrollHeight 
         });
 
         socket.on('initial_logs', function(data) {
@@ -127,7 +128,11 @@
             const messageData = data.data;
             const messageType = messageData.message_type;
             const message = messageData.message;
+            console.log("Status");
+            console.log(newStatus);
+            console.log("MessageType");
             console.log(messageType);
+            console.log("Message");
             console.log(message);
 
             // Update the status text

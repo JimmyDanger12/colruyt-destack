@@ -40,10 +40,10 @@ class RobotController():
         try:
             self.rob = urx.Robot(self.ip)
             status = Status.Connected
-            get_logger(__name__).log(logging.INFO,
-                "Robot connected")
             self.vision_client.connect()
             self.connect_arduino()
+            get_logger(__name__).log(logging.INFO,
+                "Robot connected")
         except Exception as e:
             get_logger(__name__).log(logging.WARNING,
                 f"Error when connecting to robot: {e}")
@@ -105,9 +105,9 @@ class RobotController():
             except Exception as e:
                 print("Exception",e)
                 break
-            self.depl_safety_syst()
+            #self.depl_safety_syst()
             self.move_pre_place_pos()
-            self.retr_safety_syst()
+            #self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)

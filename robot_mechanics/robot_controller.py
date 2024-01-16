@@ -90,7 +90,7 @@ class RobotController():
                 get_logger(__name__).log(logging.INFO,
                     "Unpickable crate detected")
                 alerted = True
-                self.alert_worker()
+                self.alert_worker("NoPickupCrate","Heighest Crate is a non-pickable Crate")
                 break
             self.move_pre_pick_pos() 
             self.move_pre_picked_pos(pick_loc, pick_ori) 
@@ -111,7 +111,7 @@ class RobotController():
                 get_logger(__name__).log(logging.INFO,
                     f"drop off not confirmed, alerting worker")
                 alerted = True
-                self.alert_worker()
+                self.alert_worker("NoDropOff", "Crate was not dropped off")
                 break
             get_logger(__name__).log(logging.INFO,
                 "Crate placed successfully")
@@ -120,8 +120,9 @@ class RobotController():
                 "Done/No Boxes detected")
             self._change_status(Status.Done)
     
-    def alert_worker(self):
-        self._change_status(Status.Alerted)
+    def alert_worker(self,message_type=None,message=None):
+        data = {'message_type': message_type, 'message':message}
+        self._change_status(Status.Alerted, data)
 
     def move_start_pos(self):
         """
@@ -240,7 +241,7 @@ class RobotController():
                     f"Pressure loss, alerting worker")
                 alerted=True
                 self.stop()
-                self.alert_worker()
+                self.alert_worker("NoPressure", "Pressure lost - Crate not gripped")
                 break
             current_pos = self.rob.getl(wait=True)
             if are_coords_within_tolerance(current_pos[:3],goal_pos[:3], 0.01):
@@ -373,5 +374,5 @@ class RobotController():
         self._change_status(Status.Done)
         #TODO: remove / add functionality
 
-    def _change_status(self, status, message=None):
-        self.handler.change_status(status, message)
+    def _change_status(self, status, data=None):
+        self.handler.change_status(status, data)

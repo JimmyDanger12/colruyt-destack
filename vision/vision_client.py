@@ -279,6 +279,7 @@ class VisionClient():
         print("Coords for heighest box:",coords_2d[:4])
         self.color_draw.polygon(coords_2d[:4],(255,0,0),width=5)
         self.data_image.save("vision/distance_annot_2.jpg")
+        self.data_image.save("robot_mechanics/static/display_img.jpg")
 
     def get_crate_height(self,coords):
         def calc_3d_distance(a,b):

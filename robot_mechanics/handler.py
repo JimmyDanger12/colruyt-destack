@@ -118,9 +118,9 @@ class Handler():
                 self.socketio.emit('new_log', {'data': new_content.strip()})
             time.sleep(1)
     
-    def change_status(self,status):
+    def change_status(self,status, data={}):
         self.status = status
-        #self.socketio.emit("update_status",self.status)
+        self.socketio.emit("update_status",{"status":status,"data":data})
 
     def handle_command(self, command):
         if command not in COMMANDS:

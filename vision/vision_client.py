@@ -183,6 +183,71 @@ class VisionClient():
             r=5
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
 
+    def latest_calc_orientation(self, coords):
+        def get_normal_vector(coords):
+            p1, p2, p3 = coords
+            d12 = np.array(p2) - np.array(p1)
+            d13 = np.array(p3) - np.array(p1)
+            normal_vec = np.cross(d12, d13)
+            return d12, d13, normal_vec
+
+        base_angles = np.array([1.209,-1.209,1.209])
+
+        a_1 = np.mean([coords[0],coords[2]],axis=0)
+        a_2 = np.mean([coords[1],coords[3]],axis=0)
+        b_1 = np.mean([coords[0],coords[1]],axis=0)
+        b_2 = np.mean([coords[2],coords[3]],axis=0)
+        d_a = a_1 - a_2
+        d_b = b_1 - b_2
+
+        # Set up the system of equations
+        A = np.array([[-d_a[0], d_b[0]],
+                    [-d_a[1], d_b[1]],
+                    [-d_a[2], d_b[2]]])
+        b = a_2 - b_2
+
+        # Solve the system of equations
+        solution = np.linalg.lstsq(A, b, rcond=None)[0]
+
+        # Extract the intersection point
+        intersection_point = a_2 + d_a * solution[0]
+        final_coords = [intersection_point,b_1,a_1]
+
+        p1 = intersection_point
+        p2 = [p1[0], p1[1], p1[2]+0.2]
+        p3 = [p1[0]+0.2, p1[1], p1[2]]
+        init_coords = np.array([p1, p2, p3])
+
+        u1,u2,u3 = get_normal_vector(init_coords)
+        v1,v2,v3 = get_normal_vector(final_coords)
+        u1 = u1 / np.linalg.norm(u1)
+        u2 = u2 / np.linalg.norm(u2)
+        u3 = u3 / np.linalg.norm(u3)
+
+        v1 = v1 / np.linalg.norm(v1)
+        v2 = v2 / np.linalg.norm(v2)
+        v3 = v3 / np.linalg.norm(v3)
+
+        def rotation_matrix_from_basis(u1, u2, u3, v1, v2, v3):
+            # Construct the rotation matrix R
+            R = np.linalg.inv(np.column_stack((u1, u2, u3))) @ np.column_stack((v1, v2, v3))
+            
+            # Extract the rotation angles using trigonometric functions
+            phi = np.arctan2(R[2, 1], R[2, 2]) #Rx
+            theta = np.arcsin(-R[2, 0]) #Ry
+            psi = np.arctan2(R[1, 0], R[0, 0]) #Rz
+            
+            # Convert angles to degrees
+            phi_deg = np.degrees(phi)
+            theta_deg = np.degrees(theta)
+            psi_deg = np.degrees(psi)
+            print("Rotated around Rx, Ry, Rz:",round(phi_deg,3),round(theta_deg,3),round(psi_deg,3))
+            return phi, theta, psi
+        
+        Rx,Ry,Rz = rotation_matrix_from_basis(u1,u2,u3,v1,v2,v3)
+        Rx, Ry, Rz = base_angles + [Rx, Ry, Rz]
+        return Rx, Ry, Rz
+
     def calculate_rotational_angles(self, coords):
         def get_normal_vector(coords):
             p1, p2, p3 = coords
@@ -363,7 +428,7 @@ class VisionClient():
                     crate_height = self.get_crate_height(robot_coords)
 
                     x,y,z = self.get_robot_coords(rel_3d_points[4])
-                    rx, ry, rz = self.calculate_rotational_angles(robot_coords) #TODO: not accurate enough
+                    rx, ry, rz = self.latest_calc_orientation(robot_coords) #TODO: not accurate enough
                     pickup_point = tuple(round(c,3) for c in (x,y,z,rx,ry,rz))
                     coords_3d.append({"coords":pickup_point,"class":cls,"height":crate_height})
                    

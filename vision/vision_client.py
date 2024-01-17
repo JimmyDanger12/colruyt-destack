@@ -130,12 +130,12 @@ class VisionClient():
         temp_2d_points = []
         for x_2d,y_2d in rel_2d_points:
             depth = depth_frame.get_distance(x_2d,y_2d)
-            if depth == 0 or depth > 1.4:
+            if depth == 0 or depth > 1.5:
                 neighbours = self.get_valid_neighbors((x_2d,y_2d),(limits[0],limits[1]),2)
                 distances = []
                 for nx, ny in neighbours:
                     depth = depth_frame.get_distance(nx, ny)
-                    if depth != 0 and depth < 1.4:
+                    if depth != 0 and depth < 1.5:
                         distances.append(depth)
                 
                 if distances:
@@ -182,7 +182,6 @@ class VisionClient():
             x,y = tuple(point_2d.flatten())
             r=5
             c1.ellipse([(x-r,y-r),(x+r,y+r)],fill=(0,255,255))
-            c1.text((x,y),f"{point_3d}")
 
     def calculate_rotational_angles(self, coords):
         def get_normal_vector(coords):
@@ -256,6 +255,7 @@ class VisionClient():
         Rx, Ry, Rz = R.from_matrix(rotation_matrix).as_rotvec(degrees=False)
         print("Rotation by (degrees)",np.round(np.rad2deg(Rx),2),np.round(np.rad2deg(Ry),2),np.round(np.rad2deg(Rz),2))
         Rx, Ry, Rz = base_angles + [Rx, Ry, Rz]
+        print("Rx, Ry, Ry",Rx,Ry,Rz)
         return Rx, Ry, Rz
 
     def get_robot_coords(self, camera_coords):
@@ -284,7 +284,7 @@ class VisionClient():
 
         hull = ConvexHull(coords_2d)
 
-        coords_2d = [coords_2d[i] for i in hull.vertices]
+        coords_2d = [tuple(coords_2d[i]) for i in hull.vertices]
 
         data_draw.polygon(coords_2d,fill=(255,0,255,125))
         self.data_image.save("robot_mechanics/static/display_img.jpg")
@@ -363,8 +363,8 @@ class VisionClient():
                     crate_height = self.get_crate_height(robot_coords)
 
                     x,y,z = self.get_robot_coords(rel_3d_points[4])
-                    rx,ry,rz = [1.209, -1.209, 1.209] #self.calculate_rotational_angles(robot_coords) #TODO: not accurate enough
-                    pickup_point = tuple(round(c,2) for c in (x,y,z,rx,ry,rz))
+                    rx, ry, rz = self.calculate_rotational_angles(robot_coords) #TODO: not accurate enough
+                    pickup_point = tuple(round(c,3) for c in (x,y,z,rx,ry,rz))
                     coords_3d.append({"coords":pickup_point,"class":cls,"height":crate_height})
                    
                     get_logger(__name__).log(logging.DEBUG,
@@ -441,7 +441,7 @@ class VisionClient():
                         z_offset = (value - in_min) / (in_max - in_min) * (out_max - out_min) + out_min
                         return z_offset
                         
-                    coords[0] += 0.025
+                    coords[0] += 0.020
                     coords[1] += 0.0375
                     coords[2] += apply_z_offset(coords) - 0.12
                     return coords

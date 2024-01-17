@@ -81,7 +81,7 @@ class RobotController():
         self.retr_safety_syst()
     
     def start_destack(self):
-        alerted = False
+        self.alerted = False
         while True:
             self.rob.set_tcp(self.tcp_bar)
             self.move_start_pos()
@@ -94,7 +94,7 @@ class RobotController():
             except NoPickUpCrateException:
                 get_logger(__name__).log(logging.INFO,
                     "Unpickable crate detected")
-                alerted = True
+                self.alerted = True
                 self.alert_worker("NoPickupCrate","Heighest Crate is a non-pickable Crate")
                 break
             self.move_pre_pick_pos() 
@@ -116,12 +116,12 @@ class RobotController():
             else: 
                 get_logger(__name__).log(logging.INFO,
                     f"drop off not confirmed, alerting worker")
-                alerted = True
+                self.alerted = True
                 self.alert_worker("NoDropOff", "Crate was not dropped off")
                 break
             get_logger(__name__).log(logging.INFO,
                 "Crate placed successfully")
-        if not alerted:
+        if not self.alerted:
             get_logger(__name__).log(logging.INFO,
                 "Done/No Boxes detected")
             self._change_status(Status.Done)
@@ -158,8 +158,8 @@ class RobotController():
         get_logger(__name__).log(logging.INFO,
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        #pick_ori = pick_coords[3:6]
-        pick_ori = [1.209, -1.209, 1.209]
+        pick_ori = pick_coords[3:6]
+        #pick_ori = [1.209, -1.209, 1.209]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_loc, pick_ori, crate_height
@@ -238,13 +238,13 @@ class RobotController():
         
         get_logger(__name__).log(logging.DEBUG,
             f"Starting reading pressure")
-        alerted=False
+        self.alerted=False
         while True:
-            pressure_value = 0.8 #ANA_IN_PRESSR.read() # +ANA_IN_PRESSL.read()
+            pressure_value = ANA_IN_PRESSR.read() # + ANA_IN_PRESSL.read()
             if pressure_value < 0.600:
                 get_logger(__name__).log(logging.WARNING,
                     f"Pressure loss, alerting worker")
-                alerted=True
+                self.alerted=True
                 self.stop()
                 self.alert_worker("NoPressure", "Pressure lost - Crate not gripped")
                 break
@@ -253,7 +253,7 @@ class RobotController():
                 break
         get_logger(__name__).log(logging.DEBUG,
             f"Stopped reading pressure")
-        if alerted:
+        if self.alerted:
             raise Exception("Pressure lost")
         else:
             get_logger(__name__).log(logging.INFO,

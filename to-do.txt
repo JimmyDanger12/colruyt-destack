@@ -1,8 +1,0 @@
-Things still to fix:
-- Test orientation accuracy
- - Add angles for all orientations (Rx+-, Ry+-, Rz+-)
-- Add Vision Display
-
-- Fix unpickable crate alert - test
-
-(- Safety system integration)

@@ -17,7 +17,7 @@ from vision.classification_model import ClassificationModel
 from vision.segmentation_model import SegmentationModel
 from scipy.spatial import ConvexHull
 
-VISION_PATH = "vision/crops/monkey/predict"
+VISION_PATH = "vision/crops/predict"
 
 class NoPickUpCrateException(Exception):
     pass
@@ -233,17 +233,13 @@ class VisionClient():
             R = np.linalg.inv(np.column_stack((u1, u2, u3))) @ np.column_stack((v1, v2, v3))
             
             # Extract the rotation angles using trigonometric functions
-            phi = np.arctan2(R[2, 1], R[2, 2]) #Rx
-            theta = np.arcsin(-R[2, 0]) #Ry
-            psi = np.arctan2(R[1, 0], R[0, 0]) #Rz
+            Rx = phi = -(np.arctan2(R[2, 1], R[2, 2])) #Rx
+            Ry = theta = np.arcsin(-R[2, 0]) #Ry
+            Rz = psi = np.arctan2(R[1, 0], R[0, 0]) #Rz
             
             # Convert angles to degrees
-            phi_deg = np.degrees(phi)
-            theta_deg = np.degrees(theta)
-            psi_deg = np.degrees(psi)
-            print("Rotated around Rx, Ry, Rz:",round(phi_deg,3),round(theta_deg,3),round(psi_deg,3))
-            return phi, theta, psi
-        
+            return Rz, Ry, Rx
+            
         Rx,Ry,Rz = rotation_matrix_from_basis(u1,u2,u3,v1,v2,v3)
         Rx, Ry, Rz = base_angles + [Rx, Ry, Rz]
         return Rx, Ry, Rz
@@ -428,7 +424,7 @@ class VisionClient():
                     crate_height = self.get_crate_height(robot_coords)
 
                     x,y,z = self.get_robot_coords(rel_3d_points[4])
-                    rx, ry, rz = self.latest_calc_orientation(robot_coords) #TODO: not accurate enough
+                    rx, ry, rz = self.calculate_rotational_angles(robot_coords)
                     pickup_point = tuple(round(c,3) for c in (x,y,z,rx,ry,rz))
                     coords_3d.append({"coords":pickup_point,"class":cls,"height":crate_height})
                    
@@ -473,7 +469,7 @@ class VisionClient():
         for res in results:
             coords = res["coords"]
             cls = res["class"]
-            if not -1.5 < coords[0] < 1.5 or not -1.6 < coords[1] < -0.6 or coords[2] > 1:
+            if not -1.5 < coords[0] < 1.5 or not -1.6 < coords[1] < -0.6 or coords[2] > 1: #limits of crate
                 get_logger(__name__).log(logging.DEBUG,"Coords not within limits!, Result ignored")
                 continue
             elif cls == "NoCrate":
@@ -486,7 +482,6 @@ class VisionClient():
             def get_coord_2(item):
                 return item["coords"][2]
             
-            #highest_entry = max(val_results, key=get_coord_2)
             max_index, highest_entry = max(enumerate(val_results), key=lambda x: get_coord_2(x[1]))
             self.show_heighest_box(max_index)
 
@@ -506,6 +501,7 @@ class VisionClient():
                         z_offset = (value - in_min) / (in_max - in_min) * (out_max - out_min) + out_min
                         return z_offset
                         
+                    #Additional transformations to robot coords
                     coords[0] += 0.020
                     coords[1] += 0.0375
                     coords[2] += apply_z_offset(coords) - 0.12

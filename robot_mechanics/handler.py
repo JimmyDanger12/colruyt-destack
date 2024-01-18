@@ -50,18 +50,6 @@ class Handler():
                 f"Flask server shutting down"
             )
     
-    def test_robot(self):
-        self.robot_controller.connect()
-        self.robot_controller.start_destack()
-    
-    def test_vision(self):
-        self.robot_controller.connect()
-        self.robot_controller.test_vision()
-    
-    def test_drop_off(self):
-        self.robot_controller.connect()
-        self.robot_controller.test_drop_off()
-    
     def start_server(self):
         self.server = Flask(__name__)
         self.socketio = SocketIO(self.server)

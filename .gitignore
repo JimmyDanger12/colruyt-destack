@@ -9,9 +9,5 @@ logs/
 *.log.[0-9][0-9]
 data/
 .idea/
-runs/
-*yolov8*
 crops/
-robot_movements/robot_path_V1.py
-robot_movements/robot_path_V2.py
 *.jpg

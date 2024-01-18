@@ -4,7 +4,6 @@ from robot_mechanics.status import Status
 from backend_logging import get_logger
 import logging
 import time
-import numpy
 import copy
 import pyfirmata2 as pyfirmata
 
@@ -26,8 +25,10 @@ class RobotController():
         self.vision_client = VisionClient()
         self.rob = None
 
-        self.tcp_bar = [0.02, 0, 0.1095, 0, 0, 0]
+        self.tcp = [0.02, 0, 0.1095, 0, 0, 0]
 
+
+        #Fixed positions
         self.pre_pick = [-0.055, -0.708, 0.331, 1.2, -1.2, 1.2] 
         self.post_pick = [-0.12111, -0.40713, 0.37773, 0.8309, -0.8033, 1.4556]
         self.place_pos = [-0.70156, 0.38036, 0.01387, 0.0, -1.6, 0.0] 
@@ -51,7 +52,7 @@ class RobotController():
         self._change_status(status)   
 
     def connect_arduino(self):
-        board = pyfirmata.Arduino('COM3')
+        board = pyfirmata.Arduino('COM8')
         it = pyfirmata.util.Iterator(board)
         it.start()
 
@@ -66,24 +67,10 @@ class RobotController():
         global ANA_IN_PRESSL
         ANA_IN_PRESSL = board.get_pin('a:1:i')
     
-    def test_vision(self):
-        self.rob.set_tcp(self.tcp_bar)
-        self.move_start_pos()
-        pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
-        self.move_pre_pick_pos()
-        self.move_pre_picked_pos(pick_loc, pick_ori)
-        #self.move_picked_pos()
-    
-    def test_drop_off(self):
-        self.move_start_pos()
-        self.depl_safety_syst()
-        time.sleep(5)
-        self.retr_safety_syst()
-    
     def start_destack(self):
         self.alerted = False
         while True:
-            self.rob.set_tcp(self.tcp_bar)
+            self.rob.set_tcp(self.tcp)
             self.move_start_pos()
             try:
                 pick_loc, pick_ori, crate_height = self.retrieve_pick_pos()
@@ -105,9 +92,9 @@ class RobotController():
             except Exception as e:
                 print("Exception",e)
                 break
-            #self.depl_safety_syst()
+            self.depl_safety_syst()
             self.move_pre_place_pos()
-            #self.retr_safety_syst()
+            self.retr_safety_syst()
             self.move_on_conv_pos(crate_height) 
             self.move_place_crate() 
             dropoff_value = self.rob.get_digital_in(DIG_IN_DROPOFF)
@@ -138,7 +125,7 @@ class RobotController():
         """
         get_logger(__name__).log(logging.INFO,
             f"Starting move to start pos")
-        self.rob.set_tcp(self.tcp_bar) 
+        self.rob.set_tcp(self.tcp) 
         get_logger(__name__).log(logging.DEBUG,
             f"set tcp")
         self.rob.movel(self.start_pos, acc=1, vel=0.25) 
@@ -158,8 +145,7 @@ class RobotController():
         get_logger(__name__).log(logging.INFO,
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        #pick_ori = pick_coords[3:6]
-        pick_ori = [1.209, -1.209, 1.209]
+        pick_ori = pick_coords[3:6]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_loc, pick_ori, crate_height
@@ -369,14 +355,6 @@ class RobotController():
         self._change_status(Status.Stopped)
         get_logger(__name__).log(logging.WARNING,
                                  "Stopped robot")
-
-    def destack_done(self):
-        """
-        Soft stop robot
-        -> Status Done
-        """
-        self._change_status(Status.Done)
-        #TODO: remove / add functionality
 
     def _change_status(self, status, data={}):
         self.handler.change_status(status, data)

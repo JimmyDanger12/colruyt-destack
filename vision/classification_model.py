@@ -186,6 +186,6 @@ if __name__ == "__main__":
     a.load_model()
     #a.train(params, show=True, save=True)
     #a.test()
-    path="vision/crops/monkey/predict/crops/Crate"
+    path="vision/crops/predict/crops/Crate"
     #path="vision/data/detected_crops"
     a.predict(path=path)

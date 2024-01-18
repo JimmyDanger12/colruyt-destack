@@ -54,7 +54,7 @@ class SegmentationModel():
                             conf=0.4,
                             iou=0.45,
                             save_crop=save_crops,
-                            project="vision/crops/monkey",
+                            project="vision/crops/",
                             exist_ok=True)
         
         if show:

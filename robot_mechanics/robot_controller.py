@@ -158,8 +158,8 @@ class RobotController():
         get_logger(__name__).log(logging.INFO,
             f"Retrieved coords, crate_size from vision {pick_coords}, {crate_height}")
         pick_loc = pick_coords[0:3]
-        pick_ori = pick_coords[3:6]
-        #pick_ori = [1.209, -1.209, 1.209]
+        #pick_ori = pick_coords[3:6]
+        pick_ori = [1.209, -1.209, 1.209]
         get_logger(__name__).log(logging.DEBUG,
             f"Retrieval of pick coordinates completed")
         return pick_loc, pick_ori, crate_height
